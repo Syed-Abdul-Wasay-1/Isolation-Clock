@@ -50,7 +50,7 @@ what the earlier drafts got wrong, on purpose.
 
 ## Final pre-submission checklist
 
-- [ ] `npx tsc -b` and `npx oxlint` pass; `npm run build` succeeds
+- [ ] `npx tsc -b` and `npx oxlint` pass; `npm run build` succeeds; `npm test` is green
 - [ ] README run steps work from a clean clone (`npm install`, `npm run dev`)
 - [ ] Every `Model:` field in `prompts.md` names the tool actually used
 - [ ] `docs/architecture.png` exists (it is still a to-do in `docs/README.md`)

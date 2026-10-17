@@ -104,6 +104,8 @@ Isolation Clock/
 │   ├── types/           # Shared TypeScript types (household, safe place, isolation…)
 │   └── assets/          # Images, icons, styles input to the bundler
 │
+├── tests/               # Model tests (ETI, scoring, allocation) — `npm test`, no deps
+│
 ├── data/                # Data documentation for the offline inputs
 │   └── README.md        #   How the synthetic data is generated; what it is NOT
 │
@@ -231,6 +233,7 @@ Full list in [`docs/tradeoffs.md`](docs/tradeoffs.md). Headlines:
 | Offline data prep | **Python** (osmnx + networkx) in `scripts/` |
 | Runtime compute | TypeScript in `src/simulation/` — ETI, scoring, greedy matching (main thread) |
 | Data | Precomputed **JSON** in `public/data/` |
+| Tests | **Node's built-in test runner** (`node:test`) in `tests/` — no test dependencies |
 | Hosting | **Vercel / Netlify** — static deploy, no server |
 
 ### Running it locally
@@ -254,7 +257,11 @@ Useful commands:
 npm run build     # tsc -b && vite build  -> dist/
 npm run preview   # serve the production build locally
 npm run lint      # oxlint
+npm test          # type-check + run the model test suite (node:test, no extra deps)
 ```
+
+The tests cover the model in `src/simulation/`: the ETI/status calculation, the priority score and
+confidence, and the greedy resource matching.
 
 To deploy, point Vercel or Netlify at the repo: build `npm run build`, output `dist/`.
 

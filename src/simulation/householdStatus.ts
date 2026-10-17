@@ -1,5 +1,5 @@
 import type { Household, IsolationRecord } from '../types/study'
-import { compareHouseholdPriority, getPriorityScore } from './priorityScore'
+import { compareHouseholdPriority, getPriorityScore } from './priorityScore.ts'
 
 export type HouseholdStatus = 'safe' | 'urgent' | 'isolated' | 'unknown'
 

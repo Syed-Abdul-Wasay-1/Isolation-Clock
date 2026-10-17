@@ -58,7 +58,7 @@ history of these mistakes on purpose.
 - [ ] Public repo, commit history visible
 - [ ] Live link deployed and reachable
 - [ ] `npm install` + `npm run dev` work from a clean clone
-- [ ] `npx tsc -b`, `npx oxlint`, `npm run build` all pass
+- [ ] `npx tsc -b`, `npx oxlint`, `npm run build` and `npm test` all pass
 - [ ] `prompts/prompts.md` Model fields name the tool actually used
 - [ ] `docs/architecture.png` rendered and referenced from the README
 - [ ] Doc drift above resolved

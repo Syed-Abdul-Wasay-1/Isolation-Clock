@@ -77,25 +77,28 @@ confidence = max(0, 1 - 0.2 * missingVulnerabilityFields)
 | Score, confidence, comparator | `src/simulation/priorityScore.ts` |
 | Boats / vehicles / beds | `src/simulation/resourceMatching.ts` |
 | Composition + playback + tab split | `src/pages/IsolationClockPage.tsx` |
+| Tests | `tests/householdStatus.test.ts`, `tests/priorityScore.test.ts`, `tests/resourceMatching.test.ts` |
 | Spec | `docs/methodology.md`, `docs/SCORING.md`, `docs/ALLOCATION.md`, `docs/SIMULATION.md` |
 
 ## Workflow for a change here
 
 1. Read the matching doc first; it is the spec, and it wins unless you only bump values.
 2. Change the function in `src/simulation/` and the doc together.
-3. Keep the numbers visible in the UI if you add or change a weight - the tool's selling point is
+3. Update or add a case in `tests/` so the formula stays pinned.
+4. Keep the numbers visible in the UI if you add or change a weight - the tool's selling point is
    that a coordinator can see *why*.
-4. Verify:
+5. Verify:
 
 ```bash
 npx tsc -b      # typecheck
 npx oxlint      # lint
 npm run build   # production build
+npm test        # model test suite (node:test)
 ```
 
 ## Known simplifications worth stating out loud
 
-- Sensitivity bands and offline snapshots are **documented but not implemented**.
+- Sensitivity bands and offline snapshots were **never built**; the docs no longer claim them.
 - `floor_level`, `last_contact_hours` and `data_completeness` are displayed but do **not** affect the
   score or confidence.
 - The score screen shows "/ 100" while the practical maximum is 85.

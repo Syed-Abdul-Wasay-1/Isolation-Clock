@@ -235,6 +235,24 @@ weights, resource rules, UX and the pitch.
   file names in `public/data/README.md` and refreshed the hackathon-submission skill so it no longer
   reports the drift as open.
 
+### 2026-10-17 - Review the new Rabia commit and add a model test suite - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Goal:** Decide whether the newly pushed `origin/rabia` commit is worth porting, then do the most
+  valuable follow-up.
+- **Prompt:**
+  > *"Rabia added new stuff in her branch - check and tell if it's needed. Do whatever is best."*
+- **Outcome:** Reviewed `b4bc175` ("Add flood routing, ETI, uncertainty and offline support") and
+  rejected it: it adds an in-browser Dijkstra routing engine over absolute metres, confidence bands,
+  a service worker, offline snapshots and a second road graph, all on the **pre-Sukkur (Hala)**
+  history - each piece either duplicates or contradicts the shipped model, so nothing was ported.
+  The one worthwhile idea was her `tests/routing.test.mjs` (we had no tests). Added `tests/` with 45
+  cases across ETI/status, priority scoring/confidence and resource matching, run with Node's
+  built-in `node:test` runner (zero new dependencies) plus a `tsconfig.test.json` so `npm test`
+  type-checks them. One source change was required: `householdStatus.ts` now imports
+  `./priorityScore.ts` with the extension so Node can resolve it (TypeScript already allows
+  `.ts` imports here).
+
 ---
 
 ## Corrections to earlier drafts

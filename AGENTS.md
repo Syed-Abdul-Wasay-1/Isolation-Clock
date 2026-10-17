@@ -49,10 +49,14 @@ npm run dev        # Vite dev server (http://localhost:5173)
 npm run build      # tsc -b && vite build  -> dist/
 npm run preview    # serve the production build
 npm run lint       # oxlint
+npm test           # type-check tests + run the node:test suite in tests/
 ```
 
-- **Verification gate:** before you call a task done, run `npx tsc -b`, `npx oxlint` and
-  `npm run build`. All three must pass. Report what you could not verify.
+- **Verification gate:** before you call a task done, run `npx tsc -b`, `npx oxlint`,
+  `npm run build` and `npm test`. All four must pass. Report what you could not verify.
+- **Tests** live in `tests/` and use Node's built-in runner (`node:test`, no dependencies). They cover
+  the model in `src/simulation/`: ETI/status, priority scoring and confidence, and resource matching.
+  Add a case there whenever you change the model.
 - **Data regeneration is optional** and needs Python (osmnx / networkx / geopandas). The generated
   JSON is committed, so the app runs without it. If you do regenerate, use the skill
   `.agents/skills/data-pipeline/` and commit the resulting `public/data/*.json`.
@@ -147,7 +151,7 @@ Load the matching skill before working in its area:
 A task is done only when:
 
 1. The change is implemented and consistent with the surrounding style.
-2. `npx tsc -b`, `npx oxlint` and `npm run build` all pass.
+2. `npx tsc -b`, `npx oxlint`, `npm run build` and `npm test` all pass.
 3. Every affected doc under `docs/`, `README.md` or `data/README.md` is updated, and no doc claims a
    feature that does not exist.
 4. A new entry is added to `prompts/prompts.md`.
