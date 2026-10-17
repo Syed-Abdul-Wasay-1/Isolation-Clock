@@ -2,12 +2,14 @@
 
 > **Not who is flooded — who is about to be cut off, and how many hours they have.**
 
-**Isolation Clock** is a scenario simulator for flood rescue coordination. Instead of ranking
-households by *current* flood depth, it ranks them by **time until isolation** — how long before
-every road out of their neighbourhood is under water and they can no longer be reached.
+**Isolation Clock** is a scenario simulator for flood rescue coordination in **Hala, Sindh,
+Pakistan**. Instead of ranking households by *current* flood depth, it ranks them by **time until
+isolation** — how long before every road out of their neighbourhood is under water and they can no
+longer be reached.
 
 A frail person on dry ground whose only road floods in 90 minutes outranks someone already standing
-at a shelter door.
+at a shelter door. The household records are synthetic by design, while the building and road data
+for the study area comes from real OpenStreetMap map information.
 
 Built for **CODE//CONNECT'26 — Vibe Coding Hackathon** (Problem 01, Disaster Response).
 
@@ -195,7 +197,8 @@ Full list in [`docs/tradeoffs.md`](docs/tradeoffs.md). Headlines:
   field; the cost is that datasets must be precomputed and shipped rather than queried live.
 - **Small study area, a few hundred synthetic households** — enough to show the re-sorting live,
   small enough to run instantly in the browser.
-- **Synthetic population, not real resident data** — privacy and zero data-availability risk.
+- **Synthetic population, not real resident data** — privacy and zero data-availability risk; only
+  the map footprint and road network are real data for Hala, Sindh.
 - **Simulated hydrology, not hydrodynamic modelling** — coarse elevation can't resolve urban drains.
 - **Ranking, not dispatch** — we prioritise *who*; vehicle assignment stays with the coordinator.
 

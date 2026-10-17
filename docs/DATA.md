@@ -1,8 +1,9 @@
 # Synthetic data format
 
-This project intentionally uses synthetic, non-personal data only. The generated files under
-`public/data/` are designed to resemble a real but imperfect flood-response dataset, including
-noise and missing values so the ranking logic can be tested safely.
+This project is scoped to the **Hala, Sindh, Pakistan** study area. The generated files under
+`public/data/` intentionally use synthetic, non-personal household data only. The map layers are
+real OpenStreetMap-derived data for the buildings and roads in this area, but all household
+attributes are fabricated for demo and testing.
 
 ## Household fields
 
@@ -61,3 +62,10 @@ Every generated file includes:
 ## Data quality note
 
 A small percentage of records intentionally contain `null` values and near-duplicate entries to demonstrate how the Isolation Clock prototype handles imperfect, messy data in the field.
+
+## Shelter and hospital placement
+
+Shelters and hospitals are chosen from real OSM amenities in the Hala bounding box when they exist
+(`school`, `hospital`, `clinic`, `community_centre`, `place_of_worship`). If the box contains no
+eligible amenities, the generator falls back to sensible fixed coordinates near the study area and
+prints a warning so the fallback is explicit.

@@ -2,45 +2,45 @@
   "synthetic": true,
   "seed": 20261017,
   "bounding_box": {
-    "min_lat": 52.47,
-    "min_lon": -1.92,
-    "max_lat": 52.486,
-    "max_lon": -1.905
+    "min_lat": 25.805,
+    "min_lon": 68.41,
+    "max_lat": 25.825,
+    "max_lon": 68.435
   },
   "shelters": [
     {
       "id": "S1",
-      "name": "North Community Centre",
-      "lat": 52.4738,
-      "lon": -1.9196,
+      "name": "Hala Community Shelter",
+      "lat": 25.8132,
+      "lon": 68.4189,
       "capacity": 90
     },
     {
       "id": "S2",
-      "name": "South Market Hall",
-      "lat": 52.4768,
-      "lon": -1.9068,
+      "name": "Hala Market Shelter",
+      "lat": 25.8172,
+      "lon": 68.4246,
       "capacity": 120
     },
     {
       "id": "S3",
-      "name": "East School Hall",
-      "lat": 52.4817,
-      "lon": -1.9125,
+      "name": "Hala School Shelter",
+      "lat": 25.8195,
+      "lon": 68.429,
       "capacity": 110
     },
     {
       "id": "S4",
-      "name": "West Civic Hub",
-      "lat": 52.4831,
-      "lon": -1.9185,
+      "name": "Hala Civic Shelter",
+      "lat": 25.8114,
+      "lon": 68.4278,
       "capacity": 100
     },
     {
       "id": "S5",
-      "name": "Midtown Shelter",
-      "lat": 52.4794,
-      "lon": -1.9108,
+      "name": "Hala East Shelter",
+      "lat": 25.8154,
+      "lon": 68.4318,
       "capacity": 130
     }
   ]

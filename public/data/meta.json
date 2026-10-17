@@ -1,19 +1,24 @@
 {
   "synthetic": true,
+  "study_area": "Hala, Sindh, Pakistan",
   "seed": 20261017,
   "bounding_box": {
-    "min_lat": 52.47,
-    "min_lon": -1.92,
-    "max_lat": 52.486,
-    "max_lon": -1.905
+    "min_lat": 25.805,
+    "min_lon": 68.41,
+    "max_lat": 25.825,
+    "max_lon": 68.435
   },
+  "buildings_found": 0,
+  "fallback_used": true,
   "generated_files": [
     "households.json",
     "shelters.json",
-    "hospitals.json"
+    "hospitals.json",
+    "meta.json"
   ],
   "notes": [
-    "Synthetic-only demo dataset for flood-response prioritization.",
-    "Contains deliberate missing values and duplicate-like records to stress-test data handling."
+    "Household data is synthetic and intentionally noisy to simulate incomplete field data.",
+    "Only the building and road map layers are derived from real OpenStreetMap data in the Hala study area.",
+    "If building data is unavailable or sparse, household placement falls back to road-proximate points."
   ]
 }
