@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { IsolationMap } from '../components/IsolationMap'
+import { BeforeAfterPanel } from '../components/BeforeAfterPanel'
+import type { PinnedScenarioSnapshot } from '../components/BeforeAfterPanel'
 import { RankingPanel } from '../components/RankingPanel'
 import type { RankingTab } from '../components/RankingPanel'
 import { ResourceAllocationPanel } from '../components/ResourceAllocationPanel'
@@ -10,12 +12,61 @@ import { compareHouseholdPriority, getPriorityScore } from '../simulation/priori
 import { DEFAULT_RESOURCE_CONFIG, matchResources } from '../simulation/resourceMatching'
 import type { ResourceConfig } from '../simulation/resourceMatching'
 
+const PLAYBACK_DURATION_MS = 20_000
+const PLAYBACK_TICK_MS = 100
+
+function getPlaybackElapsed(
+  elapsed: number,
+  lastTick: number | null,
+  speed: number,
+  now: number,
+): number {
+  if (lastTick === null) return elapsed
+  return Math.min(PLAYBACK_DURATION_MS, elapsed + Math.max(0, now - lastTick) * speed)
+}
+
 export function IsolationClockPage() {
   const dataState = useStudyData()
   const [scenarioLevel, setScenarioLevel] = useState(0)
+  const [pinnedSnapshot, setPinnedSnapshot] = useState<PinnedScenarioSnapshot | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [playbackStartLevel, setPlaybackStartLevel] = useState<number | null>(null)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const playbackElapsedRef = useRef(0)
+  const playbackTickRef = useRef<number | null>(null)
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<RankingTab>('evacuate')
   const [resourceConfig, setResourceConfig] = useState<ResourceConfig>(DEFAULT_RESOURCE_CONFIG)
+
+  useEffect(() => {
+    if (!isPlaying || playbackStartLevel === null) return
+    const interval = window.setInterval(() => {
+      const now = performance.now()
+      const elapsed = getPlaybackElapsed(
+        playbackElapsedRef.current,
+        playbackTickRef.current,
+        playbackSpeed,
+        now,
+      )
+      playbackElapsedRef.current = elapsed
+      playbackTickRef.current = now
+      const progress = elapsed / PLAYBACK_DURATION_MS
+      const level = Math.min(
+        100,
+        playbackStartLevel + Math.round((100 - playbackStartLevel) * progress),
+      )
+      setScenarioLevel((current) => current === level ? current : level)
+
+      if (elapsed >= PLAYBACK_DURATION_MS) {
+        setScenarioLevel(100)
+        setIsPlaying(false)
+        setPlaybackStartLevel(null)
+        playbackElapsedRef.current = 0
+        playbackTickRef.current = null
+      }
+    }, PLAYBACK_TICK_MS)
+    return () => window.clearInterval(interval)
+  }, [isPlaying, playbackSpeed, playbackStartLevel])
 
   const scenarios = useMemo(() => {
     if (dataState.status !== 'ready') return []
@@ -77,6 +128,50 @@ export function IsolationClockPage() {
   const selectedIndex = selectedGroup.findIndex(
     ({ scenario }) => scenario.household.id === selectedHouseholdId,
   )
+
+  function pinCurrentMoment() {
+    setPinnedSnapshot({
+      level: scenarioLevel,
+      isolatedCount,
+      rankedHouseholds: rankedHouseholds.map(({ scenario, priority }, index) => ({
+        householdId: scenario.household.id,
+        rank: index + 1,
+        score: priority.total,
+        status: scenario.status,
+      })),
+      assignments: Array.from(allocation.assignments, ([householdId, assignment]) => ({
+        householdId,
+        assignment: { ...assignment, shelter: { ...assignment.shelter } },
+      })),
+    })
+  }
+
+  function startOrResumePlayback() {
+    if (playbackStartLevel === null) {
+      setPlaybackStartLevel(scenarioLevel)
+      playbackElapsedRef.current = 0
+    }
+    playbackTickRef.current = performance.now()
+    setIsPlaying(true)
+  }
+
+  function pausePlayback() {
+    const now = performance.now()
+    const elapsed = getPlaybackElapsed(
+      playbackElapsedRef.current,
+      playbackTickRef.current,
+      playbackSpeed,
+      now,
+    )
+    playbackElapsedRef.current = elapsed
+    playbackTickRef.current = null
+    if (elapsed >= PLAYBACK_DURATION_MS) {
+      setScenarioLevel(100)
+      setPlaybackStartLevel(null)
+      playbackElapsedRef.current = 0
+    }
+    setIsPlaying(false)
+  }
 
   return (
     <main className="app-shell">
@@ -151,11 +246,83 @@ export function IsolationClockPage() {
               max="100"
               step="1"
               value={scenarioLevel}
+              disabled={isPlaying}
               style={{ '--slider-progress': `${scenarioLevel}%` } as React.CSSProperties}
-              onChange={(event) => setScenarioLevel(Number(event.currentTarget.value))}
+              onChange={(event) => {
+                setIsPlaying(false)
+                setPlaybackStartLevel(null)
+                playbackElapsedRef.current = 0
+                playbackTickRef.current = null
+                setScenarioLevel(Number(event.currentTarget.value))
+              }}
             />
             <div className="slider-scale"><span>0 · lower exposure</span><span>100 · higher exposure</span></div>
+            <div className="scenario-actions">
+              <div className="playback-controls">
+                <button
+                  className="scenario-button scenario-button-primary"
+                  type="button"
+                  disabled={!isPlaying && scenarioLevel >= 100}
+                  onClick={() => {
+                    if (isPlaying) pausePlayback()
+                    else startOrResumePlayback()
+                  }}
+                >
+                  {isPlaying ? 'Pause' : 'Play'}
+                </button>
+                <label className="speed-control">
+                  Speed
+                  <select
+                    aria-label="Playback speed"
+                    value={playbackSpeed}
+                    onChange={(event) => {
+                      const now = performance.now()
+                      if (isPlaying) {
+                        playbackElapsedRef.current = getPlaybackElapsed(
+                          playbackElapsedRef.current,
+                          playbackTickRef.current,
+                          playbackSpeed,
+                          now,
+                        )
+                        playbackTickRef.current = now
+                      }
+                      setPlaybackSpeed(Number(event.currentTarget.value))
+                    }}
+                  >
+                    <option value={1}>1x</option>
+                    <option value={2}>2x</option>
+                  </select>
+                </label>
+              </div>
+              <div className="snapshot-controls">
+                <button className="scenario-button" type="button" onClick={pinCurrentMoment}>
+                  Pin this moment
+                </button>
+                {pinnedSnapshot && (
+                  <button
+                    className="scenario-button scenario-button-clear"
+                    type="button"
+                    onClick={() => setPinnedSnapshot(null)}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {pinnedSnapshot && (
+                <span className="pin-status">Pinned at level {pinnedSnapshot.level}</span>
+              )}
+            </div>
           </section>
+
+          {pinnedSnapshot && scenarioLevel !== pinnedSnapshot.level && (
+            <BeforeAfterPanel
+              snapshot={pinnedSnapshot}
+              currentLevel={scenarioLevel}
+              currentIsolatedCount={isolatedCount}
+              rankedHouseholds={rankedHouseholds}
+              allocation={allocation}
+            />
+          )}
 
           <ResourceAllocationPanel
             allocation={allocation}

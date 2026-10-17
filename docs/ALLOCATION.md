@@ -29,3 +29,7 @@ represent passable roads, travel time, or route safety. Capacities and the
 resource pool are synthetic scenario assumptions, not verified operational
 inventory; the model also assigns one household per boat or vehicle rather than
 simulating trips or shared rides.
+
+The frontend can pin a scenario level with its full household ranking, scores, and resource
+assignments, then compare those results with a different level to show rank shifts, newly isolated
+households, and boat or vehicle assignment changes.
