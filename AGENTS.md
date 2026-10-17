@@ -113,6 +113,7 @@ Do not change these meanings without flagging it and updating the docs:
 ### YYYY-MM-DD - <short label> - OK | MISS | PARTIAL
 
 - **Model:** <the tool/model actually used>
+- **Done by:** <the person who directed the work — ask them, never guess>
 - **Goal:** <what you were trying to achieve>
 - **Prompt:**
   > *"<the actual prompt text>"*
@@ -120,6 +121,9 @@ Do not change these meanings without flagging it and updating the docs:
 ```
 
 - **The `Model:` field must name the tool that was actually used.** Do not fabricate it.
+- **Tasks are not pre-assigned to anyone.** Never write an owner into `TASKS.md` and never assume
+  one. When you finish a task, **ask the user who did the work**, then record that name in
+  `Done by:`. If they do not answer, leave it blank — never invent a name.
 - Record the **misses** too — they are the most useful entries. Never delete the
   "Corrections to earlier drafts" table; add to it if you find more drift.
 - Reusable prompts live in `prompts/templates/`; the project primer is `prompts/context.md`.
@@ -161,7 +165,8 @@ A task is done only when:
 2. `npx tsc -b`, `npx oxlint`, `npm run build` and `npm test` all pass.
 3. Every affected doc under `docs/`, `README.md` or `data/README.md` is updated, and no doc claims a
    feature that does not exist.
-4. A new entry is added to `prompts/prompts.md`.
+4. A new entry is added to `prompts/prompts.md`, with `Done by:` naming the person who did the
+   work — ask them, do not guess.
 5. You have told the user how you verified the change, and what you could not verify.
 6. You have **not** committed or pushed anything — the changes are left in the working tree for the
    user to review and commit themselves.

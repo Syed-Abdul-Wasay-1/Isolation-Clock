@@ -23,8 +23,8 @@ keep accurate: instead of improvising, we start from a template and paste the re
 ## How we use the log
 
 - Every substantive AI interaction gets an entry in [`prompts.md`](prompts.md).
-- We log the **goal**, the **actual prompt**, the **model**, and the **outcome** - including when the
-  AI was wrong, and how we caught it.
+- We log the **goal**, the **actual prompt**, the **model**, who **did the work**, and the
+  **outcome** - including when the AI was wrong, and how we caught it.
 - We do not log trivial autocomplete. We log decisions.
 
 ## Ground rules
@@ -51,4 +51,5 @@ keep accurate: instead of improvising, we start from a template and paste the re
 | [`templates/04-regenerate-data.md`](templates/04-regenerate-data.md) | Rebuilding `public/data/`. |
 | [`templates/05-update-docs.md`](templates/05-update-docs.md) | Keeping docs and this log in sync with the code. |
 
-After using a template, add the entry to [`prompts.md`](prompts.md) with the model that was used.
+After using a template, add the entry to [`prompts.md`](prompts.md) with the model that was used and
+the name of the person who did the work.

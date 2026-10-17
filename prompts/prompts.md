@@ -305,12 +305,31 @@ weights, resource rules, UX and the pitch.
   (close the loop on road-block reports, critical-roads panel, escalation curve, people-not-households,
   the missing SMS and data-loader tests, map performance, docs sync), Part 2 artifacts, Part 3 repo
   hygiene, Part 4 deploy, Part 5 video, Part 6 submission last. Added a status snapshot corrected to
-  `5f9b5d7` / 49 tests, an owner per task, a budget and cut list, a "done when" per task, and a
-  post-deadline backlog. Kept the honesty constraints explicit: the road-close task is specified as an
+  `5f9b5d7` / 49 tests, a budget and cut list, a "done when" per task, and a post-deadline backlog.
+  (The per-task owners that version carried were removed the same day at the user's request — tasks
+  are not pre-assigned; see `AGENTS.md` section 7.) Kept the honesty constraints explicit: the road-close task is specified as an
   *impact preview* built from the precomputed `bottleneck_road` and must not claim the ETI changed,
   unless the stretch option ships the road graph and recomputes it properly. Also flagged that the
   app cannot recompute isolation client-side today because only edge geometries and thresholds are
   shipped, not the graph. Doc-only change; no code or model touched.
+
+### 2026-10-17 - Drop pre-assigned task owners; ask who did the work - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Stop assigning owners to tasks up front. The person who did a piece of work should be
+  recorded when it is finished, not guessed in advance.
+- **Prompt:**
+  > *"dont mention owner remove the owner whenever does the work using ai the ai should ask who did
+  > it and then mention thier name thats it"*
+- **Outcome:** Removed every `**Owner:**` line and the "Who does what" table from `TASKS.md`, and
+  replaced them with a blank `**Done by:**` on each of T1–T22 plus a rule in "How to use this file":
+  the AI asks who did the work and records the name, and never writes an owner itself. Made the same
+  rule persistent in `AGENTS.md` — a new bullet in section 7, and the entry format now carries
+  `Done by:`, with section 11's definition of done updated to match. Carried the field through
+  `prompts/README.md` and the copy-paste template at the foot of `prompts.md`. The instruction is
+  live immediately: the assistant asked before writing this entry. Doc-only change; no code or model
+  touched.
 
 ---
 
@@ -336,6 +355,7 @@ TEMPLATE - copy for each new entry. Use OK / MISS / PARTIAL for the outcome mark
 ### YYYY-MM-DD - <short label> - OK
 
 - **Model:** Claude Sonnet 5.5
+- **Done by:** <the person who did the work - ask, never guess>
 - **Goal:** <what you were trying to achieve>
 - **Prompt:**
   > *"<the actual prompt text>"*

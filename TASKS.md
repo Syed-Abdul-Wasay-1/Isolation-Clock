@@ -11,23 +11,27 @@
 - Tasks are numbered **T1 … T22 in the order to do them**. Do not skip ahead to the submission
   tasks; the product work comes first.
 - Tick boxes as you go and keep the [status snapshot](#status-snapshot) current.
+- **No task is pre-assigned to anyone.** Do not write an owner. When a task is finished, the AI
+  **asks who did the work** and records that name in the task's `Done by:` line and in the matching
+  `prompts.md` entry. It never guesses a name.
 - **Every code task (T1–T11) is only done when all five of these are true:**
   1. The change is implemented in the surrounding style.
   2. `npx tsc -b`, `npx oxlint`, `npm run build` and `npm test` all pass.
   3. Every affected doc under `docs/` (and `README.md` / `data/README.md`) is updated, and no doc
      claims a feature that does not exist.
-  4. A new entry is added to `prompts/prompts.md`, with `Model: Claude Sonnet 5.5`.
+  4. A new entry is added to `prompts/prompts.md`, with `Done by:` naming the person who did the
+     work — ask them, do not guess.
   5. Nothing is committed or pushed by an agent — the user reviews the working tree and commits.
 
 ## Status snapshot (as of 17 Oct 2026)
 
 | Area | State |
 |---|---|
-| Branch | `main` == `origin/main` == `5f9b5d7`, pushed, working tree clean |
+| Branch | `main` == `origin/main` == `3b44915`, pushed, working tree clean |
 | Build / lint / types | ✅ `tsc -b`, `oxlint`, `npm run build` all pass |
 | Tests | ⚠️ 49 pass — but only ETI/status, scoring and allocation. **SMS and data loading are untested** |
 | Docs | ✅ Match the shipped code — no phantom features |
-| SMS check-in simulator | ✅ Merged (Ameena), documented in `docs/SMS.md` |
+| SMS check-in simulator | ✅ Merged, documented in `docs/SMS.md` |
 | Prompt log + skills | ✅ `prompts/` complete, 4 repo skills under `.agents/skills/` |
 | Team roster | ✅ Filled in `README.md` |
 | **Product gaps** | ❌ Road-block reports are inert; no critical-roads or escalation view; households not people |
@@ -38,19 +42,10 @@
 
 ---
 
-# Who does what
+## Estimates and cut list
 
-| Person | Role | Owns |
-|---|---|---|
-| **Syed Abdul Wasay** | Lead | Deploy, diagrams, video, repo hygiene, submission |
-| **Ameena Batool** | Simulation / routing | The model, scoring, allocation, the test suite |
-| **Rabia Chadio** | Frontend / UX | React/Leaflet UI, panels, accessibility, screenshots |
-
-Estimates assume one person on the task. Two people can run different tasks at once — the order
-below is a sequence, not a strict serialisation, but T1 must land before T2/T3 so the road model is
-stable.
-
-## Budget & cut list
+Each task carries an estimate for one person. The order below is a sequence, not a strict
+serialisation, but **T1 must land before T2/T3** so the road model is stable.
 
 You have roughly one working day. If you run short, cut in this order (they are the least
 load-bearing): **T9 → T10 → T4 → T3**. Never cut T1, T5, T11, T18, T20 or T21.
@@ -60,7 +55,7 @@ load-bearing): **T9 → T10 → T4 → T3**. Never cut T1, T5, T11, T18, T20 or 
 # Part 1 — Fix the product (do these first, in this order)
 
 ## T1 · Close the loop on road-blocked SMS reports
-**Owner:** Ameena (model) + Rabia (UI) · **Est:** 3 h · **Priority: highest**
+**Est:** 3 h · **Done by:** — · **Priority: highest**
 
 Today an SMS `3` is recorded and displayed but changes nothing
 (`IsolationClockPage.tsx:241` — *"the simulation is unchanged until confirmed"*). That is the most
@@ -91,7 +86,7 @@ stretch**:
 `docs/SMS.md` are explicit that it is a preview (A) or a genuine recompute (B).
 
 ## T2 · Critical-roads panel
-**Owner:** Rabia (panel) + Ameena (aggregation) · **Est:** 2 h
+**Est:** 2 h · **Done by:** —
 
 `bottleneck_road` is precomputed for all 400 households but today is shown for the selected
 household only (`WhyRankPanel.tsx:216`). Aggregate it.
@@ -109,7 +104,7 @@ household only (`WhyRankPanel.tsx:216`). Aggregate it.
 **Done when:** you can answer "which single road, if it fails, isolates the most people?" in the app.
 
 ## T3 · Escalation curve — make the clock a clock
-**Owner:** Rabia (chart) + Ameena (math) · **Est:** 2 h
+**Est:** 2 h · **Done by:** —
 
 Per-household ETI exists; a cumulative curve does not. This is what makes it read as a *clock*.
 
@@ -127,7 +122,7 @@ Per-household ETI exists; a cumulative curve does not. This is what makes it rea
 slider.
 
 ## T4 · Count people, not just households
-**Owner:** Rabia · **Est:** 1 h
+**Est:** 1 h · **Done by:** —
 
 `household_size` is in the data but every headline counts households, which understates scale.
 
@@ -140,7 +135,7 @@ slider.
 **Done when:** no headline says a bare household count when the people count is available.
 
 ## T5 · Tests for `smsCheckins.ts`
-**Owner:** Ameena · **Est:** 1.5 h
+**Est:** 1.5 h · **Done by:** —
 
 The SMS module has **no tests** while the other three simulation modules do.
 
@@ -153,7 +148,7 @@ The SMS module has **no tests** while the other three simulation modules do.
 **Done when:** `tests/smsCheckins.test.ts` exists and passes.
 
 ## T6 · Tests for data loading
-**Owner:** Ameena · **Est:** 1 h
+**Est:** 1 h · **Done by:** —
 
 `useStudyData.ts` validation is untested — it was parked in this file's old backlog.
 
@@ -164,7 +159,7 @@ The SMS module has **no tests** while the other three simulation modules do.
 **Done when:** the loader's error paths are covered.
 
 ## T7 · Tests for the new panels' logic
-**Owner:** Ameena · **Est:** 1 h
+**Est:** 1 h · **Done by:** —
 
 - [ ] Cases for the T2 aggregation (ties, a household with `bottleneck_road: null`).
 - [ ] Cases for the T3 cumulative curve (monotonic, hour 0 equals the current isolated set).
@@ -173,7 +168,7 @@ The SMS module has **no tests** while the other three simulation modules do.
 **Done when:** the Part 1 pure functions all have tests.
 
 ## T8 · Performance: stop re-rendering every road segment per tick
-**Owner:** Rabia · **Est:** 1.5 h
+**Est:** 1.5 h · **Done by:** —
 
 `IsolationMap.tsx` re-renders all ~4,958 road polylines on every playback tick, which is visible
 jank on a 20 s sweep.
@@ -188,7 +183,7 @@ jank on a 20 s sweep.
 **Done when:** playback is smooth at 1×/2× and the profile numbers are recorded.
 
 ## T9 · Optional model upgrades (only if time remains)
-**Owner:** Ameena · **Est:** 2–4 h each
+**Est:** 2–4 h each · **Done by:** —
 
 Each of these needs its own doc update, and each must stay within the honesty rules.
 
@@ -203,7 +198,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 **Done when:** either shipped with docs + tests, or consciously left in the backlog below.
 
 ## T10 · Decide the empty placeholder folders
-**Owner:** Wasay · **Est:** 15 min
+**Est:** 15 min · **Done by:** —
 
 `src/routing/` and `src/workers/` contain only `.gitkeep`.
 
@@ -215,7 +210,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 (no Web Worker, no service worker).
 
 ## T11 · Docs sync for everything added in Part 1
-**Owner:** Wasay, with Ameena · **Est:** 1 h
+**Est:** 1 h · **Done by:** —
 
 - [ ] Walk `docs/` and fix every statement that Part 1 changed: `methodology.md`, `SCORING.md`,
       `SIMULATION.md`, `ALLOCATION.md`, `SMS.md`, `architecture.md`, `assumptions.md`,
@@ -223,7 +218,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 - [ ] Update `docs/README.md`'s index for any new doc, and `README.md`'s feature list.
 - [ ] Grep the whole repo for any figure you changed (counts, max score 95, `rise_rate_default`) and
       make the numbers agree.
-- [ ] One `prompts/prompts.md` entry per Part 1 task, each `Model: Claude Sonnet 5.5`.
+- [ ] One `prompts/prompts.md` entry per Part 1 task, each with `Model:` and `Done by:` filled in.
 
 **Done when:** no doc contradicts the shipped code, and every Part 1 task has a prompt-log entry.
 
@@ -232,7 +227,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 # Part 2 — Presentation artifacts
 
 ## T12 · Render `docs/architecture.png`
-**Owner:** Wasay · **Est:** 1 h
+**Est:** 1 h · **Done by:** —
 
 - [ ] Draw the real data flow: offline pipeline (`scripts/`) → `public/data/*.json` →
       `useStudyData` → `src/simulation/` → components → page state.
@@ -243,7 +238,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 **Done when:** the README renders the diagram and no text calls it pending.
 
 ## T13 · Screenshots
-**Owner:** Rabia · **Est:** 45 min
+**Est:** 45 min · **Done by:** —
 
 - [ ] Capture: the map mid-sweep; the ranking with a selected household; the why-panel (score +
       confidence + verification); the allocation panel; the before/after comparison; and each new
@@ -253,7 +248,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 **Done when:** `screenshots/` is non-empty and the README shows them.
 
 ## T14 · README final read
-**Owner:** Wasay · **Est:** 30 min
+**Est:** 30 min · **Done by:** —
 
 - [ ] Read it start to finish as a judge: does `npm install` + `npm run dev` work exactly as written?
 - [ ] Add the live link (T18) and the video link (T20) near the top.
@@ -268,17 +263,17 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 # Part 3 — Repo hygiene
 
 ## T15 · Tidy branches and refs
-**Owner:** Wasay · **Est:** 15 min
+**Est:** 15 min · **Done by:** —
 
-- [ ] `ameena` is merged into `main` — delete the local and remote branch.
-- [ ] `wasay` is merged — delete or fast-forward it, then delete.
+- [ ] `ameena`, `wasay` and `rabia-v1` are all merged into `main` — delete the local and remote
+      branches.
 - [ ] Local-only tag `archive/rabia-b4bc175` — keep as insurance or `git tag -d` it. It is not
       pushed.
 
 **Done when:** `git branch -a` shows only what is live, and the history is still legible.
 
 ## T16 · Repo size check
-**Owner:** Ameena · **Est:** 20 min
+**Est:** 20 min · **Done by:** —
 
 - [ ] `data/*.graphml` (~2 MB), the `data/*.geojson` caches and `cache/*.json` are committed so the
       pipeline is reproducible offline — confirm that is still intended, or move them out and note
@@ -289,9 +284,10 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 **Done when:** `data/README.md` explains every committed data file.
 
 ## T17 · Keep this file live
-**Owner:** Wasay · **Est:** ongoing
+**Est:** ongoing · **Done by:** —
 
 - [ ] Tick boxes as tasks land and refresh the status snapshot (branch tip, test count, gate status).
+- [ ] Fill in `Done by:` on each task as it completes — ask who did it.
 - [ ] Move anything you consciously drop into the [post-deadline backlog](#post-deadline-backlog)
       with a one-line reason.
 
@@ -300,7 +296,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 # Part 4 — Deploy
 
 ## T18 · Deploy to a live URL
-**Owner:** Wasay · **Est:** 1 h · **Blocking for submission**
+**Est:** 1 h · **Done by:** — · **Blocking for submission**
 
 - [ ] Commit a deploy config (`vercel.json` or `netlify.toml`): build `npm run build`, output `dist/`,
       static site, no serverless functions.
@@ -312,7 +308,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 **Done when:** the live URL loads the full app on a fresh device with no console errors.
 
 ## T19 · Performance sanity check on the live URL
-**Owner:** Wasay · **Est:** 45 min
+**Est:** 45 min · **Done by:** —
 
 `public/data/roads.json` is ~1.1 MB raw.
 
@@ -327,7 +323,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 # Part 5 — Demo video
 
 ## T20 · Record the ~3 minute demo
-**Owner:** Wasay + Rabia · **Est:** 1.5 h · **Blocking for submission**
+**Est:** 1.5 h · **Done by:** — · **Blocking for submission**
 
 - [ ] Script it around the live URL, in this order: the problem → drag the scenario slider and watch
       the re-sort → open one household's *why* panel → the allocation panel → pin and compare →
@@ -343,11 +339,11 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 # Part 6 — Submission (do this last)
 
 ## T21 · Submit
-**Owner:** Wasay · **Est:** 30 min
+**Est:** 30 min · **Done by:** —
 
 - [ ] Public repo with visible history — confirm the pushed tip is the one you want judged.
 - [ ] Live link works on a fresh device.
-- [ ] `prompts/prompts.md` present and complete, every entry `Model: Claude Sonnet 5.5`.
+- [ ] `prompts/prompts.md` present and complete, every entry with its `Model:` filled in.
 - [ ] `README.md` runnable as written; architecture diagram and trade-offs present.
 - [ ] Demo video link present.
 - [ ] Submit the form well before **18 Oct 2026, 22:00 PKT**.
@@ -355,7 +351,7 @@ Each of these needs its own doc update, and each must stay within the honesty ru
 **Done when:** the submission is in.
 
 ## T22 · Verify the submission
-**Owner:** Wasay · **Est:** 15 min
+**Est:** 15 min · **Done by:** —
 
 - [ ] Screenshot the confirmation.
 - [ ] Re-open the submitted live link and repo in a private window and check both as a judge would.
@@ -385,12 +381,12 @@ Consciously not built. `AGENTS.md` says the docs must not claim them until they 
 
 | Slot | Task |
 |---|---|
-| 1 | T1 road-block loop (Ameena + Rabia) |
-| 2 | T2 critical roads, T3 escalation curve (Rabia) |
-| 3 | T4 people counts, T5–T7 tests (Rabia, Ameena) |
-| 4 | T8 performance, T11 docs sync (Rabia, Wasay) |
-| 5 | T12 diagram, T13 screenshots, T14 README (Wasay + Rabia) |
-| 6 | T15–T17 hygiene (Wasay, Ameena) |
-| 7 | T18 deploy, T19 perf check (Wasay) |
-| 8 | T20 video (Wasay + Rabia) |
+| 1 | T1 road-block loop |
+| 2 | T2 critical roads, T3 escalation curve |
+| 3 | T4 people counts, T5–T7 tests |
+| 4 | T8 performance, T11 docs sync |
+| 5 | T12 diagram, T13 screenshots, T14 README |
+| 6 | T15–T17 hygiene |
+| 7 | T18 deploy, T19 perf check |
+| 8 | T20 video |
 | 9 | T21 submit, T22 verify — well before 22:00 PKT |
