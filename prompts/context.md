@@ -72,5 +72,5 @@ RULES FOR YOUR ANSWER
 
 ## After you are done
 
-Add an entry to [`prompts.md`](prompts.md) using the real model name and the actual prompt you used.
+Add an entry to [`prompts.md`](prompts.md) with the goal, the prompt you used, the model, and the outcome.
 See [`templates/05-update-docs.md`](templates/05-update-docs.md) if you want the assistant to draft it.

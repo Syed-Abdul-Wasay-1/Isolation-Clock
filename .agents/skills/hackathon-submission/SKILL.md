@@ -56,7 +56,7 @@ The `prompts/prompts.md` "Corrections to earlier drafts" table already records t
 - [ ] Live link deployed and reachable
 - [ ] `npm install` + `npm run dev` work from a clean clone
 - [ ] `npx tsc -b`, `npx oxlint`, `npm run build` all pass
-- [ ] `prompts/prompts.md` has real model names (no `_fill in_` left)
+- [ ] `prompts/prompts.md` Model fields name the tool actually used
 - [ ] `docs/architecture.png` rendered and referenced from the README
 - [ ] Doc drift above resolved
 - [ ] 3-minute demo video recorded
@@ -76,6 +76,5 @@ The `prompts/prompts.md` "Corrections to earlier drafts" table already records t
 ## Prompt-log etiquette
 
 Every substantive AI interaction gets an entry in `prompts/prompts.md`: **Date - Goal - Prompt -
-Model - Outcome**. Use `_fill in_` for the model when drafting and replace it with the real tool name
-before submitting. Misses are worth recording - the existing log keeps a "Corrections to earlier
+Model - Outcome**. Misses are worth recording - the existing log keeps a "Corrections to earlier
 drafts" table on purpose.

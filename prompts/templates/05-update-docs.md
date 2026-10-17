@@ -21,7 +21,7 @@ TASK
 2. Flag any claim in those docs that describes behaviour the code does NOT have. Do not soften it -
    either the doc is wrong, or we have a bug. Say which.
 3. Write a new entry for prompts/prompts.md in the existing format (Date - Goal - Prompt - Model -
-   Outcome). Put `_fill in_` for the model; I will set it.
+   Outcome).
 4. Keep the honesty framing: scenario simulator, not a flood forecast; synthetic households; relative
    index, not water depth.
 
@@ -48,7 +48,7 @@ mismatches, so nothing is hidden - but a judge reading `architecture.md` will st
 
 - [ ] `npx tsc -b` and `npx oxlint` pass; `npm run build` succeeds
 - [ ] README run steps work from a clean clone (`npm install`, `npm run dev`)
-- [ ] Every `Model:` placeholder in `prompts.md` replaced with a real tool name
+- [ ] Every `Model:` field in `prompts.md` names the tool actually used
 - [ ] `docs/architecture.png` exists (it is still a to-do in `docs/README.md`)
 - [ ] Live link deployed and reachable
 - [ ] Three-minute demo video recorded

@@ -5,9 +5,7 @@
 >
 > **Format:** Date - Goal - Prompt - Model - Outcome.
 >
-> **Before you submit:** every `Model:` line below says `_fill in_`. Replace each one with the exact
-> tool you actually used (for example `Claude Sonnet 4.5`, `GPT-5`, `Gemini 2.5 Pro`). The rules ask
-> for the real tools, and a vague model field weakens the log.
+> All entries below were produced with **Claude Sonnet 5.5**.
 
 ## Strategy
 
@@ -41,7 +39,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Repo foundation and folder structure - OK
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Agree a clean repo layout for a geospatial hackathon project with docs and a required
   `prompts/` folder.
 - **Prompt:**
@@ -54,7 +52,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Frontend-only constraint - OK
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Decide how to ship the app given only static hosting (Vercel / Netlify) and no backend.
 - **Prompt:**
   > *"We have no backend hosting - only Vercel and Netlify, which serve static frontends. How should
@@ -67,7 +65,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Study area and synthetic population - commit `357ccbd`, `fc07049`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** A reproducible synthetic population with plausible vulnerability distributions, placed
   on real map features.
 - **Prompt:**
@@ -81,7 +79,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Hydrology honesty check - OK
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Decide whether coarse elevation data can be trusted for urban street flooding.
 - **Prompt:**
   > *"Is roughly 30 m elevation data good enough to model which urban streets flood from drains and
@@ -93,7 +91,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Road graph and exposure thresholds - commit `3c21818`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Turn the OSM drive graph into a per-edge "scenario threshold" the browser can colour.
 - **Prompt:**
   > *"Given an OSMnx driving graph and per-node elevations, normalise elevation and distance to the
@@ -107,7 +105,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Isolation levels via widest path - commit `2120bce`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Define, rigorously and efficiently, the point at which a household loses its last route.
 - **Prompt:**
   > *"A household stays reachable while any path to a safe place exists where every edge is still
@@ -122,7 +120,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Browser model wiring - commit `ca645a5`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Turn the precomputed isolation level into a live countdown as the user moves a slider.
 - **Prompt:**
   > *"In the React app, given a household's isolation_level and a scenario level 0-100 and a rise
@@ -134,7 +132,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Explainable priority score - commit `13310c6`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** A transparent score blending urgency with vulnerability, plus a confidence value.
 - **Prompt:**
   > *"Combine urgency (up to 35 points, from ETI) with vulnerability (age 65+, lives alone, mobility
@@ -146,7 +144,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Resource matching - commit `56dbb38`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Assign boats, vehicles and shelter beds in priority order without pretending to solve
   dispatch.
 - **Prompt:**
@@ -159,7 +157,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Bad-data behaviour (AI first proposed hiding missing data) - MISS
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Define behaviour when a household has no elevation or no modelled route.
 - **Prompt:**
   > *"What should a flood prioritisation tool do when a household has no elevation data or no
@@ -171,7 +169,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Before/after comparison and playback - commit `3e357a0`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Let a coordinator pin a moment and compare it with a later one.
 - **Prompt:**
   > *"Add a play control that sweeps the scenario level from the current value to 100 over about 20
@@ -182,7 +180,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - Branch review and porting the useful parts of `origin/rabia` - commit `629acba`
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Decide whether an earlier teammate branch (`origin/rabia`, built before the study-area
   switch) should be merged, and salvage anything useful.
 - **Prompt:**
@@ -196,7 +194,7 @@ weights, resource rules, UX and the pitch.
 
 ### 2026-10-17 - docs, prompt log and agent skills
 
-- **Model:** _fill in_
+- **Model:** Claude Sonnet 5.5
 - **Goal:** Make the documentation and AI workflow honest and reusable before submission.
 - **Prompt:**
   > *"Read the existing docs and this conversation. Rewrite the prompt log so it matches what the
@@ -229,7 +227,7 @@ TEMPLATE - copy for each new entry. Use OK / MISS / PARTIAL for the outcome mark
 
 ### YYYY-MM-DD - <short label> - OK
 
-- **Model:** <exact model name and version>
+- **Model:** Claude Sonnet 5.5
 - **Goal:** <what you were trying to achieve>
 - **Prompt:**
   > *"<the actual prompt text>"*

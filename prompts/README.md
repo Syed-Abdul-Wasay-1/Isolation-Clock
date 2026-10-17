@@ -47,4 +47,4 @@ keep accurate: instead of improvising, we start from a template and paste the re
 | [`templates/04-regenerate-data.md`](templates/04-regenerate-data.md) | Rebuilding `public/data/`. |
 | [`templates/05-update-docs.md`](templates/05-update-docs.md) | Keeping docs and this log in sync with the code. |
 
-After using a template, add the entry to [`prompts.md`](prompts.md) with the real model name.
+After using a template, add the entry to [`prompts.md`](prompts.md) with the model that was used.
