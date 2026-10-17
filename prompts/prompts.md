@@ -1,119 +1,235 @@
-# AI Prompt Log — Isolation Clock
+# AI Prompt Log - Isolation Clock
 
-> Hackathon requirement. One entry per substantive AI interaction.
-> **Format:** Date · Goal · Prompt · Model · Outcome.
+> **Required by the CODE//CONNECT'26 submission checklist:** the `prompts/` folder must document
+> the AI prompts and strategy used during development.
+>
+> **Format:** Date - Goal - Prompt - Model - Outcome.
+>
+> **Before you submit:** every `Model:` line below says `_fill in_`. Replace each one with the exact
+> tool you actually used (for example `Claude Sonnet 4.5`, `GPT-5`, `Gemini 2.5 Pro`). The rules ask
+> for the real tools, and a vague model field weakens the log.
 
 ## Strategy
 
 **How we directed the AI:**
 
-1. **Contract first.** We agreed the project structure, the data shape and the water curve *before*
-   prompting for anything — so the AI filled in a known shape instead of inventing an architecture.
-2. **One component per prompt.** Each area (simulation, routing, frontend) was prompted and reviewed
-   separately so it stayed understandable and testable.
-3. **Ask for the trade-off, not just the answer.** Prompts like *"what breaks if water recedes?"*
-   produced the risk notes in `../docs/risks.md`.
-4. **Force honesty.** We explicitly asked the AI to label the tool a *scenario simulator* and to add
-   confidence bands — never to pretend it was a forecast.
+1. **Contract first.** We fixed the data shape (`households.json`, `roads.json`,
+   `isolation.json`) and the meaning of "isolation level" *before* prompting for UI or logic, so the
+   AI filled in a known contract instead of inventing an architecture.
+2. **One concern per prompt.** Data generation, the road/isolation model, the scoring, the
+   allocation and the UI were prompted and reviewed separately.
+3. **Ask for the trade-off, not just the answer.** Prompts like *"what does this model not
+   capture?"* produced `../docs/risks.md` and `../docs/tradeoffs.md`.
+4. **Force honesty.** We required the copy to say *"scenario simulator, not a flood forecast"* and to
+   label assumptions (straight-line distance, illustrative weights) in the UI itself.
 5. **Verify against our own spec.** Every generated result was checked against
-   `../docs/methodology.md`; where the AI disagreed, our spec won.
+   `../docs/methodology.md`, `../docs/SCORING.md` and `../docs/ALLOCATION.md`; where the AI disagreed
+   with the spec, the spec won.
+6. **Log the misses.** Prompts where the AI was wrong (inventing features, dropping failures
+   silently) are kept below, because they are the most useful entries.
 
-**Division of labour:** AI = scaffolding, boilerplate, refactors, docs, debugging.
-Humans = problem framing, the ETI definition, hydrology assumptions, ranking weights, UX and pitch.
+**Division of labour.** AI: scaffolding, boilerplate, refactors, docs, debugging, first-pass
+algorithms. Humans: problem framing, the isolation/ETI definition, the exposure heuristic, ranking
+weights, resource rules, UX and the pitch.
+
+**Reusable prompts.** The prompts we re-used for day-to-day work live in
+[`templates/`](templates/) with a project primer in [`context.md`](context.md).
 
 ---
 
 ## Entries
 
-### 2026-10-17 · Project scaffold · 🟡
+### 2026-10-17 - Repo foundation and folder structure - OK
 
-- **Model:** (your coding assistant)
-- **Goal:** Agree a clean repo structure for a flood "time-to-isolation" project.
+- **Model:** _fill in_
+- **Goal:** Agree a clean repo layout for a geospatial hackathon project with docs and a required
+  `prompts/` folder.
 - **Prompt:**
   > *"Give me a folder structure for a geospatial hackathon project. It has a hydrology simulation,
   > road-network routing with a time-to-isolation calculation, synthetic household data, docs, and a
   > required `prompts/` folder. Include a README, .gitignore and a LICENSE."*
-- **Outcome:** Produced the tree now in `../README.md`. We simplified it so the source areas stay
-  readable and the contributors fill in the rest.
+- **Outcome:** Produced the tree now in `../README.md`. The folder names (`simulation/`, `routing/`,
+  `workers/`) describe the *intended* end state; two of them stayed empty because we later moved the
+  heavy work offline into `scripts/`. See "Corrections" below.
 
-### 2026-10-17 · Frontend-only constraint · 🟢
+### 2026-10-17 - Frontend-only constraint - OK
 
-- **Model:** (your coding assistant)
-- **Goal:** Decide how to ship the app given that only static hosting (Vercel / Netlify) is
-  available and there is no backend.
+- **Model:** _fill in_
+- **Goal:** Decide how to ship the app given only static hosting (Vercel / Netlify) and no backend.
 - **Prompt:**
-  > *"We have no backend hosting — only Vercel and Netlify, which serve static frontends. How should
-  > we architect a geospatial app that computes shortest paths and simulates rising water, so it runs
-  > entirely in the browser?"*
-- **Outcome:** Adopted a client-side design: **Vite + React + TypeScript**, all computation in the
-  browser, the heavy graph sweep in a **Web Worker**, and data **precomputed offline** into JSON in
-  `public/data/`. Python was dropped entirely. This decision is captured in
-  `../docs/architecture.md` and `../docs/tradeoffs.md`.
+  > *"We have no backend hosting - only Vercel and Netlify, which serve static frontends. How should
+  > we architect a geospatial app that computes shortest paths and simulates rising water, so it
+  > runs entirely in the browser?"*
+- **Outcome:** Adopted a client-side design: **Vite + React + TypeScript**, data **precomputed
+  offline** into JSON in `public/data/`. The heavy graph work ended up in **Python**, not in the
+  browser - see the correction entry. Captured in `../docs/architecture.md` and
+  `../docs/tradeoffs.md`.
 
-### 2026-10-17 · ETI definition · 🟢
+### 2026-10-17 - Study area and synthetic population - commit `357ccbd`, `fc07049`
 
-- **Model:** (your coding assistant)
-- **Goal:** Get a rigorous definition of "time to isolation".
+- **Model:** _fill in_
+- **Goal:** A reproducible synthetic population with plausible vulnerability distributions, placed
+  on real map features.
 - **Prompt:**
-  > *"Define ETI (estimated time to isolation) for a household on a road graph where water rises over
-  > time and closes road segments below a tolerance. Give a plain-language definition and an
-  > efficient approach. Assume water is monotonically non-decreasing."*
-- **Outcome:** Reached the *reachability* definition plus the monotonicity insight (once isolated,
-  always isolated), which keeps the calculation fast. Adopted into `../docs/methodology.md`.
+  > *"Write a Python script that pulls OpenStreetMap buildings and amenities for a bounding box in
+  > Sukkur, Sindh, places 400 synthetic households on jittered building centroids, samples realistic
+  > age / mobility / phone / medical attributes, deliberately blanks some fields to simulate messy
+  > field data, and writes households.json plus shelters.json and hospitals.json. Use a fixed seed."*
+- **Outcome:** `scripts/generate_data.py`. It uses osmnx with a local GeoJSON cache, a fixed seed
+  (`20261017`), and blanks roughly 15% of records (`age_band` is null for 29 of 400 households).
+  We started on a Hala bounding box, then switched the study area to Sukkur (`357ccbd`).
 
-### 2026-10-17 · Hydrology honesty check · 🟡
+### 2026-10-17 - Hydrology honesty check - OK
 
-- **Model:** (your coding assistant)
+- **Model:** _fill in_
 - **Goal:** Decide whether coarse elevation data can be trusted for urban street flooding.
 - **Prompt:**
   > *"Is roughly 30 m elevation data good enough to model which urban streets flood from drains and
   > rainfall? What should a two-day prototype do instead?"*
-- **Outcome:** Confirmed it is too coarse for urban micro-topography. We chose to **simulate water
-  level plus a drainage allowance** and documented it in `../docs/assumptions.md` rather than
-  interpolating terrain we can't trust.
+- **Outcome:** Confirmed it is too coarse for urban micro-topography. We stopped short of a
+  hydrodynamic model and instead built a **relative exposure index** (elevation + distance to mapped
+  water) turned into a 0-100 percentile scenario index. Documented in `../docs/assumptions.md` and
+  `../docs/SIMULATION.md`.
 
-### 2026-10-17 · Ranking formula · 🟢
+### 2026-10-17 - Road graph and exposure thresholds - commit `3c21818`
 
-- **Model:** (your coding assistant)
-- **Goal:** A transparent priority score blending vulnerability and urgency.
+- **Model:** _fill in_
+- **Goal:** Turn the OSM drive graph into a per-edge "scenario threshold" the browser can colour.
 - **Prompt:**
-  > *"Propose a weighted priority score combining a household vulnerability index, urgency derived
-  > from the time to isolation, and a penalty for low-confidence data. Keep it explainable to a
-  > rescue coordinator."*
-- **Outcome:** Adopted a simple weighted blend with all weights exposed as configuration. We added a
-  hard rule: households with no modelled route surface at the **top**, not the bottom.
+  > *"Given an OSMnx driving graph and per-node elevations, normalise elevation and distance to the
+  > nearest water feature, combine them into a node exposure score, convert it to a percentile rank
+  > across the whole network, and give each edge a 0-100 threshold. Explain what the number does and
+  > does not mean."*
+- **Outcome:** `scripts/build_isolation_clock.py` part A. Elevation comes from OpenTopoData/SRTM
+  (`elevation_source: "opentopodata"`, 1,908 nodes) with a synthetic surface fallback. Exposure is
+  `0.6 * elevation + 0.4 * water distance`, percentile-scaled, and each edge threshold is
+  `100 * min(exposure[u], exposure[v])`. We documented explicitly that this is **not a water depth**.
 
-### 2026-10-17 · Bad-data behaviour · 🔴 (AI first proposed hiding missing data)
+### 2026-10-17 - Isolation levels via widest path - commit `2120bce`
 
-- **Model:** (your coding assistant)
-- **Goal:** Define behaviour when elevation or roads are missing.
+- **Model:** _fill in_
+- **Goal:** Define, rigorously and efficiently, the point at which a household loses its last route.
+- **Prompt:**
+  > *"A household stays reachable while any path to a safe place exists where every edge is still
+  > open. Water only rises, so once a household is isolated it stays isolated. Given per-edge
+  > thresholds, give an efficient way to compute, for every household, the highest level at which it
+  > is still reachable, plus the safe place and the bottleneck edge on that best route."*
+- **Outcome:** A reverse **widest-path (maximin) search** from every shelter and hospital. A node's
+  value is the maximum, over routes, of the route's lowest edge threshold; ties break on path length
+  then safe-place id. This is exactly "the last surviving route closes", which is the core of ETI.
+  The AI called this "shortest path" in its first draft; we corrected the wording to widest path
+  because we care about the weakest link, not the shortest distance.
+
+### 2026-10-17 - Browser model wiring - commit `ca645a5`
+
+- **Model:** _fill in_
+- **Goal:** Turn the precomputed isolation level into a live countdown as the user moves a slider.
+- **Prompt:**
+  > *"In the React app, given a household's isolation_level and a scenario level 0-100 and a rise
+  > rate of 10 index points per hour, compute ETI = max(0, (isolation_level - scenarioLevel) /
+  > riseRate). Classify as isolated, urgent (<= 3 h) or safe. Format the ETI for display."*
+- **Outcome:** `src/simulation/householdStatus.ts`. The rise rate was wrong in the first draft of
+  the data file and was fixed in the same commit; `docs/SIMULATION.md` now records it as an
+  illustrative setting, not a measured rate.
+
+### 2026-10-17 - Explainable priority score - commit `13310c6`
+
+- **Model:** _fill in_
+- **Goal:** A transparent score blending urgency with vulnerability, plus a confidence value.
+- **Prompt:**
+  > *"Combine urgency (up to 35 points, from ETI) with vulnerability (age 65+, lives alone, mobility
+  > limitation, medical need, no phone; up to 50 points) into a 0-100 score. Report confidence
+  > separately from how many vulnerability fields are missing. Missing values must add zero points,
+  > never points. Keep every weight visible to the user."*
+- **Outcome:** `src/simulation/priorityScore.ts`, documented in `../docs/SCORING.md`. We accepted
+  that the practical maximum is 85, not 100, and that confidence never changes the score.
+
+### 2026-10-17 - Resource matching - commit `56dbb38`
+
+- **Model:** _fill in_
+- **Goal:** Assign boats, vehicles and shelter beds in priority order without pretending to solve
+  dispatch.
+- **Prompt:**
+  > *"Greedily walk the ranked households. Already-isolated households get boats, the rest get
+  > vehicles. Each resource carries one household up to a passenger capacity. Assign the closest
+  > shelter with enough remaining beds by straight-line distance. Record why a household could not be
+  > assigned. Be explicit that this is not a globally optimal matching."*
+- **Outcome:** `src/simulation/resourceMatching.ts`, documented in `../docs/ALLOCATION.md`. It uses
+  one household per boat/vehicle and Haversine distance, not routed travel time.
+
+### 2026-10-17 - Bad-data behaviour (AI first proposed hiding missing data) - MISS
+
+- **Model:** _fill in_
+- **Goal:** Define behaviour when a household has no elevation or no modelled route.
 - **Prompt:**
   > *"What should a flood prioritisation tool do when a household has no elevation data or no
   > modelled route?"*
-- **Outcome:** The AI initially suggested **excluding** incomplete households. **We rejected that** —
-  the people most likely to be missing from data are exactly the people most at risk. Final rule:
-  fall back to the neighbourhood average with a low-confidence badge, and *surface* no-route
-  households as urgent. Logged here because the miss sharpened the design.
+- **Outcome:** The AI initially suggested **excluding** incomplete households. **We rejected that** -
+  the people most likely to be missing from data are the people most at risk. Final rule: keep them
+  visible, add no fabricated points, and lower confidence only. In the shipped data every household
+  has a computable route, but the code paths and UI copy handle the null case.
 
-### 2026-10-17 · README + docs · 🟢
+### 2026-10-17 - Before/after comparison and playback - commit `3e357a0`
 
-- **Model:** (your coding assistant)
-- **Goal:** A README a judge can run, plus trade-off and risk docs.
+- **Model:** _fill in_
+- **Goal:** Let a coordinator pin a moment and compare it with a later one.
 - **Prompt:**
-  > *"Write a README for a geospatial hackathon MVP with problem statement, project structure,
-  > approach and submission checklist. Then draft docs for assumptions, risks and trade-offs, and be
-  > explicit about what the tool is NOT."*
-- **Outcome:** Drafted the docs in this repo. Human edit added the offline-snapshot and
-  false-precision framing.
+  > *"Add a play control that sweeps the scenario level from the current value to 100 over about 20
+  > seconds with a 1x/2x speed toggle, and a 'pin this moment' action that snapshots the ranking,
+  > isolated count and resource assignments so we can show rank movement, newly isolated households
+  > and assignment changes."*
+- **Outcome:** `BeforeAfterPanel.tsx` plus the playback state in `IsolationClockPage.tsx`.
+
+### 2026-10-17 - Branch review and porting the useful parts of `origin/rabia` - commit `629acba`
+
+- **Model:** _fill in_
+- **Goal:** Decide whether an earlier teammate branch (`origin/rabia`, built before the study-area
+  switch) should be merged, and salvage anything useful.
+- **Prompt:**
+  > *"Compare this feature branch against main: what did it add, is anything still useful, and can it
+  > be merged cleanly? List only the ideas worth porting and say why the rest is obsolete."*
+- **Outcome:** The branch is an early prototype that predates ETI, scoring and allocation; merging it
+  would conflict and duplicate components. We ported four small wins by hand instead: deploy-safe
+  data paths (`import.meta.env.BASE_URL`), map `fitBounds`, map popups showing rank/status/ETI/
+  assignment/reasons, and per-record validation of shelter and hospital data. We did **not** adopt
+  its vulnerability weights, because `docs/SCORING.md` defines ours.
+
+### 2026-10-17 - docs, prompt log and agent skills
+
+- **Model:** _fill in_
+- **Goal:** Make the documentation and AI workflow honest and reusable before submission.
+- **Prompt:**
+  > *"Read the existing docs and this conversation. Rewrite the prompt log so it matches what the
+  > code actually does, flag anything the docs claim that was never built, and add reusable prompt
+  > templates plus repo skills an AI assistant can load."*
+- **Outcome:** This rewritten log, the reusable prompts in [`templates/`](templates/), and the
+  skills under `../.agents/skills/`. The main correction: earlier docs described a Web Worker ETI
+  sweep, offline snapshots and a sensitivity band that were **never implemented**.
+
+---
+
+## Corrections to earlier drafts
+
+Kept on purpose: the rules ask us to be explicit about behaviour, and an honest log is worth more
+than a flattering one.
+
+| Earlier claim | Reality |
+|---|---|
+| "The heavy graph sweep runs in a **Web Worker**." | Not built. All computation is precomputed in Python; the browser only converts isolation levels to ETI. `src/workers/` is empty. |
+| "Precomputed **offline snapshots** at +10/+20/+30 cm." | Not built. The app recomputes from `isolation.json` in the browser at any level. |
+| "Every ranking shows a **sensitivity band** / stays-top-10 flag." | Not built. Confidence is shown, but there is no ±margin re-run. |
+| "**Python was dropped entirely.**" | Wrong. Python (`scripts/`) generates every file in `public/data/`. |
+| "Road tolerance is about **0.30 m**." | Not implemented. There is no depth tolerance; thresholds are a 0-100 relative exposure percentile. |
+| "**We do not assign vehicles** - allocation stays human." | Partly outdated. `resourceMatching.ts` now makes a greedy boat/vehicle/bed suggestion; the docs note it is not dispatch. |
 
 ---
 
 <!--
-TEMPLATE — copy for each new entry:
+TEMPLATE - copy for each new entry. Use OK / MISS / PARTIAL for the outcome marker.
 
-### YYYY-MM-DD · <short label> · 🟢/🟡/🔴
+### YYYY-MM-DD - <short label> - OK
 
-- **Model:** <model name + version>
+- **Model:** <exact model name and version>
 - **Goal:** <what you were trying to achieve>
 - **Prompt:**
   > *"<the actual prompt text>"*
