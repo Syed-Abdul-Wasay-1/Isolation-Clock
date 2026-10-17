@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Part A road exposure network for the Sukkur study area."""
+"""Build the Sukkur road exposure network and household isolation scenarios."""
 
 from __future__ import annotations
 
+import heapq
+import itertools
 import json
 import math
 import time
@@ -12,7 +14,9 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 import geopandas as gpd
+import networkx as nx
 import osmnx as ox
+from pyproj import Transformer
 from shapely.geometry import LineString, box, mapping
 from shapely.ops import unary_union
 
@@ -27,6 +31,7 @@ ELEVATION_URL = "https://api.opentopodata.org/v1/srtm30m"
 OSM_MAP_URL = "https://api.openstreetmap.org/api/0.6/map"
 BATCH_SIZE = 100
 BATCH_DELAY_SECONDS = 1
+RISE_RATE_DEFAULT = 0.02
 ox.settings.requests_timeout = 45
 
 
@@ -37,7 +42,8 @@ def bbox_key() -> str:
     ).replace(".", "_")
 
 
-def read_public_data() -> None:
+def read_public_data() -> dict[str, list[dict[str, Any]]]:
+    data: dict[str, list[dict[str, Any]]] = {}
     for filename, collection in (
         ("households.json", "households"),
         ("shelters.json", "shelters"),
@@ -46,9 +52,12 @@ def read_public_data() -> None:
         path = PUBLIC_DATA_DIR / filename
         with path.open(encoding="utf-8") as input_file:
             payload = json.load(input_file)
-        if not isinstance(payload.get(collection), list):
+        records = payload.get(collection)
+        if not isinstance(records, list):
             raise ValueError(f"{path} must contain a '{collection}' list.")
-        print(f"Read {len(payload[collection])} {collection} from {path.name}")
+        data[collection] = records
+        print(f"Read {len(records)} {collection} from {path.name}")
+    return data
 
 
 def study_bbox() -> tuple[float, float, float, float]:
@@ -207,9 +216,154 @@ def normalise(values: dict[Any, float]) -> dict[Any, float]:
     return {key: (value - minimum) / (maximum - minimum) for key, value in values.items()}
 
 
+def snap_to_road_nodes(graph: Any, places: list[dict[str, Any]]) -> dict[str, Any]:
+    if not places:
+        return {}
+    transformer = Transformer.from_crs("EPSG:4326", CRS_METRIC, always_xy=True)
+    place_coordinates: list[tuple[float, float]] = []
+    for place in places:
+        try:
+            lat, lon = float(place["lat"]), float(place["lon"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"Place has invalid coordinates: {place!r}") from exc
+        if not math.isfinite(lat) or not math.isfinite(lon):
+            raise ValueError(f"Place has non-finite coordinates: {place!r}")
+        place_coordinates.append(transformer.transform(lon, lat))
+    projected_nodes = {
+        node_id: transformer.transform(float(attributes["x"]), float(attributes["y"]))
+        for node_id, attributes in graph.nodes(data=True)
+    }
+    snapped: dict[str, Any] = {}
+    for place, place_coordinate in zip(places, place_coordinates):
+        snapped[str(place["id"])] = min(
+            projected_nodes,
+            key=lambda node_id: math.hypot(
+                projected_nodes[node_id][0] - place_coordinate[0],
+                projected_nodes[node_id][1] - place_coordinate[1],
+            ),
+        )
+    return snapped
+
+
+def bottleneck_road_name(edge_data: dict[str, Any]) -> str:
+    name = edge_data.get("name")
+    if isinstance(name, list):
+        name = next((item for item in name if item), None)
+    if name:
+        return str(name)
+    return str(edge_data["edge_id"])
+
+
+def widest_path_results(
+    graph: Any,
+    households: list[dict[str, Any]],
+    safe_places: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], int]:
+    if not nx.is_directed(graph):
+        raise TypeError("Widest-path routing requires the directed drive graph.")
+    household_nodes = snap_to_road_nodes(graph, households)
+    safe_nodes = snap_to_road_nodes(graph, safe_places)
+
+    best_level = {node: -1.0 for node in graph.nodes}
+    best_distance = {node: math.inf for node in graph.nodes}
+    best_safe_id: dict[Any, str | None] = {node: None for node in graph.nodes}
+    best_bottleneck: dict[Any, str | None] = {node: None for node in graph.nodes}
+    sequence = itertools.count()
+    queue: list[tuple[float, float, str, int, Any]] = []
+
+    for place in sorted(safe_places, key=lambda item: str(item["id"])):
+        safe_id = str(place["id"])
+        node = safe_nodes[safe_id]
+        if (
+            best_level[node] < 100.0
+            or (best_level[node] == 100.0 and safe_id < str(best_safe_id[node]))
+        ):
+            best_level[node] = 100.0
+            best_distance[node] = 0.0
+            best_safe_id[node] = safe_id
+            heapq.heappush(queue, (-100.0, 0.0, safe_id, next(sequence), node))
+
+    reverse_graph = graph.reverse(copy=False)
+    while queue:
+        negative_level, distance, safe_id, _, node = heapq.heappop(queue)
+        level = -negative_level
+        if (
+            level != best_level[node]
+            or distance != best_distance[node]
+            or safe_id != best_safe_id[node]
+        ):
+            continue
+        for _, neighbor, edge_key, edge_data in reverse_graph.out_edges(
+            node, keys=True, data=True
+        ):
+            candidate_level = min(level, float(edge_data["threshold"]))
+            candidate_distance = distance + float(edge_data.get("length", 0.0))
+            current_safe_id = best_safe_id[neighbor]
+            is_better = candidate_level > best_level[neighbor] or (
+                candidate_level == best_level[neighbor]
+                and (
+                    candidate_distance < best_distance[neighbor]
+                    or (
+                        candidate_distance == best_distance[neighbor]
+                        and (current_safe_id is None or safe_id < current_safe_id)
+                    )
+                )
+            )
+            if not is_better:
+                continue
+
+            edge_id = str(edge_data.get("edge_id", f"{neighbor}-{node}-{edge_key}"))
+            if float(edge_data["threshold"]) <= level:
+                bottleneck = bottleneck_road_name({**edge_data, "edge_id": edge_id})
+            else:
+                bottleneck = best_bottleneck[node]
+            best_level[neighbor] = candidate_level
+            best_distance[neighbor] = candidate_distance
+            best_safe_id[neighbor] = safe_id
+            best_bottleneck[neighbor] = bottleneck
+            heapq.heappush(
+                queue,
+                (
+                    -candidate_level,
+                    candidate_distance,
+                    safe_id,
+                    next(sequence),
+                    neighbor,
+                ),
+            )
+
+    results: list[dict[str, Any]] = []
+    no_route_count = 0
+    for household in households:
+        household_id = str(household["id"])
+        node = household_nodes[household_id]
+        isolation_level = best_level[node]
+        if isolation_level < 0.0:
+            isolation_value: float | None = None
+            nearest_safe_id = None
+            bottleneck = None
+            no_route_count += 1
+        else:
+            isolation_value = isolation_level
+            nearest_safe_id = best_safe_id[node]
+            bottleneck = best_bottleneck[node]
+        results.append(
+            {
+                "id": household_id,
+                "road_node_id": str(node),
+                "isolation_level": isolation_value,
+                "nearest_safe_place_id": nearest_safe_id,
+                "bottleneck_road": bottleneck,
+            }
+        )
+    return results, no_route_count
+
+
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    read_public_data()
+    public_data = read_public_data()
+    households = public_data["households"]
+    safe_places = public_data["shelters"] + public_data["hospitals"]
 
     key = bbox_key()
     graph = load_road_graph(DATA_DIR / f"roads_{key}.graphml")
@@ -233,9 +387,14 @@ def main() -> None:
 
     elevation_normalised = normalise(elevations)
     water_normalised = normalise(water_distances)
-    exposure = {
+    raw_exposure = {
         node_id: 0.6 * elevation_normalised[node_id] + 0.4 * water_normalised[node_id]
         for node_id, _ in nodes
+    }
+    exposure_order = sorted(raw_exposure, key=lambda node_id: (raw_exposure[node_id], str(node_id)))
+    exposure = {
+        node_id: rank / (len(exposure_order) - 1)
+        for rank, node_id in enumerate(exposure_order)
     }
 
     edge_features = []
@@ -248,17 +407,24 @@ def main() -> None:
                     (float(graph.nodes[v]["x"]), float(graph.nodes[v]["y"])),
                 ]
             )
+        edge_id = f"{u}-{v}-{key_value}"
+        threshold = 100.0 * min(exposure[u], exposure[v])
+        attributes["edge_id"] = edge_id
+        attributes["threshold"] = threshold
         edge_features.append(
             {
                 "type": "Feature",
                 "geometry": mapping(geometry),
                 "properties": {
-                    "edge_id": f"{u}-{v}-{key_value}",
-                    "threshold": 100.0 * min(exposure[u], exposure[v]),
+                    "edge_id": edge_id,
+                    "threshold": threshold,
                 },
             }
         )
 
+    isolation_households, no_route_count = widest_path_results(
+        graph, households, safe_places
+    )
     output_path = PUBLIC_DATA_DIR / "roads.json"
     with output_path.open("w", encoding="utf-8") as output_file:
         json.dump(
@@ -278,6 +444,31 @@ def main() -> None:
     print(f"Minimum threshold: {min(thresholds):.6f}")
     print(f"Maximum threshold: {max(thresholds):.6f}")
     print(f"Wrote {output_path}")
+
+    isolation_path = PUBLIC_DATA_DIR / "isolation.json"
+    with isolation_path.open("w", encoding="utf-8") as output_file:
+        json.dump(
+            {
+                "config": {"rise_rate_default": RISE_RATE_DEFAULT},
+                "households": isolation_households,
+            },
+            output_file,
+            separators=(",", ":"),
+        )
+
+    for level in range(10, 101, 10):
+        isolated = sum(
+            household["isolation_level"] is None
+            or household["isolation_level"] <= level
+            for household in isolation_households
+        )
+        print(f"Households isolated at level {level}: {isolated}")
+    if no_route_count:
+        print(
+            f"Warning: {no_route_count} households have no directed route to any "
+            "snapped shelter or hospital."
+        )
+    print(f"Wrote {isolation_path}")
 
 
 if __name__ == "__main__":
