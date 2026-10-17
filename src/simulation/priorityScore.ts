@@ -32,6 +32,18 @@ export interface PriorityScore {
   topFactors: PriorityFactor[]
 }
 
+export function compareHouseholdPriority(
+  firstScenario: HouseholdScenario,
+  firstPriority: PriorityScore,
+  secondScenario: HouseholdScenario,
+  secondPriority: PriorityScore,
+): number {
+  return secondPriority.total - firstPriority.total ||
+    (firstScenario.etiHours ?? Infinity) - (secondScenario.etiHours ?? Infinity) ||
+    firstPriority.missingFieldCount - secondPriority.missingFieldCount ||
+    firstScenario.household.id.localeCompare(secondScenario.household.id)
+}
+
 const vulnerabilityFields = [
   {
     key: 'age65Plus',

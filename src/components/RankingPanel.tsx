@@ -2,6 +2,7 @@ import { formatEti } from '../simulation/householdStatus'
 import type { PriorityScore } from '../simulation/priorityScore'
 import { PRIORITY_WEIGHTS, URGENCY_MAX_POINTS } from '../simulation/priorityScore'
 import type { HouseholdScenario } from '../simulation/householdStatus'
+import type { ResourceAllocation } from '../simulation/resourceMatching'
 
 export interface RankedHousehold {
   scenario: HouseholdScenario
@@ -19,6 +20,7 @@ interface RankingPanelProps {
   activeTab: RankingTab
   onTabChange: (tab: RankingTab) => void
   onSelectHousehold: (householdId: string) => void
+  allocation: ResourceAllocation
 }
 
 export function RankingPanel({
@@ -30,6 +32,7 @@ export function RankingPanel({
   activeTab,
   onTabChange,
   onSelectHousehold,
+  allocation,
 }: RankingPanelProps) {
   const households = activeTab === 'rescue' ? isolatedHouseholds : evacuateHouseholds
 
@@ -96,6 +99,14 @@ export function RankingPanel({
             <span className={`status-dot status-${scenario.status}`} />
             <span className="rank-main">
               <span className="rank-id">{scenario.household.id}</span>
+              <span
+                className={`resource-badge resource-${allocation.assignments.get(scenario.household.id)?.resourceType ?? 'none'}`}
+                title={allocation.assignments.get(scenario.household.id)?.usedDefaultHouseholdSize
+                  ? `Household size assumed as ${allocation.assignments.get(scenario.household.id)?.householdSize}`
+                  : undefined}
+              >
+                {allocation.assignments.get(scenario.household.id)?.resourceLabel ?? 'none'}
+              </span>
               <span className="rank-vulnerability">
                 {priority.topFactors.map((factor) => factor.label).join(' · ') || 'No positive factors'}
               </span>

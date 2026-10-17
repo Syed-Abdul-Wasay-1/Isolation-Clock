@@ -1,6 +1,7 @@
 import { divIcon } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet'
 import type { HouseholdScenario } from '../simulation/householdStatus'
+import type { ResourceAllocation } from '../simulation/resourceMatching'
 import type { BoundingBox, RoadFeature, SafePlace } from '../types/study'
 
 interface IsolationMapProps {
@@ -12,6 +13,7 @@ interface IsolationMapProps {
   scenarioLevel: number
   selectedHouseholdId: string | null
   onSelectHousehold: (householdId: string) => void
+  allocation: ResourceAllocation
 }
 
 const householdColors = {
@@ -47,6 +49,7 @@ export function IsolationMap({
   scenarioLevel,
   selectedHouseholdId,
   onSelectHousehold,
+  allocation,
 }: IsolationMapProps) {
   const center: [number, number] = [
     (boundingBox.min_lat + boundingBox.max_lat) / 2,
@@ -78,6 +81,25 @@ export function IsolationMap({
             }}
           />
         ))}
+        {households.map(({ household }) => {
+          const assignment = allocation.assignments.get(household.id)
+          if (!assignment) return null
+          return (
+            <Polyline
+              key={`assignment-${household.id}`}
+              positions={[
+                [household.lat, household.lon],
+                [assignment.shelter.lat, assignment.shelter.lon],
+              ]}
+              pathOptions={{
+                color: assignment.resourceType === 'boat' ? '#4778c8' : '#d99a2e',
+                weight: 1,
+                opacity: 0.65,
+                className: 'allocation-line',
+              }}
+            />
+          )
+        })}
         {shelters.map((shelter) => (
           <Marker
             key={shelter.id}

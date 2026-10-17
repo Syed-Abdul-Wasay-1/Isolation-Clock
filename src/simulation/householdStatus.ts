@@ -1,4 +1,5 @@
 import type { Household, IsolationRecord } from '../types/study'
+import { compareHouseholdPriority, getPriorityScore } from './priorityScore'
 
 export type HouseholdStatus = 'safe' | 'urgent' | 'isolated' | 'unknown'
 
@@ -41,8 +42,12 @@ export function getSortedActiveHouseholds(
 ): HouseholdScenario[] {
   return scenarios
     .filter((scenario) => scenario.status !== 'isolated' && scenario.status !== 'unknown')
-    .sort((first, second) => {
-      const timeDifference = (first.etiHours ?? Infinity) - (second.etiHours ?? Infinity)
-      return timeDifference || first.household.id.localeCompare(second.household.id)
-    })
+    .sort((first, second) =>
+      compareHouseholdPriority(
+        first,
+        getPriorityScore(first),
+        second,
+        getPriorityScore(second),
+      ),
+    )
 }

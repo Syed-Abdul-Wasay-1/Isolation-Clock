@@ -9,7 +9,7 @@ export interface Household {
   id: string
   lat: number
   lon: number
-  household_size: number
+  household_size?: number | null
   age_band: string | null
   mobility: string | null
   medical_need: boolean | null
@@ -25,7 +25,7 @@ export interface SafePlace {
   name: string | null
   lat: number
   lon: number
-  capacity: number
+  capacity?: number | null
 }
 
 export interface HouseholdDataset {

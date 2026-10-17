@@ -2,6 +2,7 @@ import type { HouseholdScenario } from '../simulation/householdStatus'
 import { formatEti } from '../simulation/householdStatus'
 import type { PriorityFactor, PriorityScore } from '../simulation/priorityScore'
 import type { SafePlace } from '../types/study'
+import type { ResourceAssignment, UnassignedHousehold } from '../simulation/resourceMatching'
 
 interface WhyRankPanelProps {
   scenario: HouseholdScenario
@@ -10,6 +11,8 @@ interface WhyRankPanelProps {
   safePlaces: SafePlace[]
   scenarioLevel: number
   riseRateDefault: number
+  resourceAssignment: ResourceAssignment | undefined
+  unassigned: UnassignedHousehold | undefined
   onBack: () => void
 }
 
@@ -25,12 +28,10 @@ const vulnerabilityFields = [
   ['data_completeness', 'Data completeness'],
 ] as const
 
-function displayValue(value: unknown): string {
+function displayValue(value: unknown, asPercentage = false): string {
   if (value === null || value === undefined || value === '') return 'Not reported'
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-  if (typeof value === 'number') {
-    return value <= 1 && value >= 0 ? `${Math.round(value * 100)}%` : String(value)
-  }
+  if (typeof value === 'number' && asPercentage) return `${Math.round(value * 100)}%`
   return String(value)
 }
 
@@ -41,6 +42,8 @@ export function WhyRankPanel({
   safePlaces,
   scenarioLevel,
   riseRateDefault,
+  resourceAssignment,
+  unassigned,
   onBack,
 }: WhyRankPanelProps) {
   const { household, isolation } = scenario
@@ -127,6 +130,19 @@ export function WhyRankPanel({
           <span>Total</span>
           <strong>{priority.total.toFixed(1)} / 100</strong>
         </div>
+        <div className="resource-explanation">
+          <strong>Resource allocation</strong>
+          {resourceAssignment ? (
+            <p>
+              {resourceAssignment.resourceLabel} → {resourceAssignment.shelter.name || resourceAssignment.shelter.id}
+              {' '}({resourceAssignment.distanceKm.toFixed(1)} km straight-line)
+              {resourceAssignment.usedDefaultHouseholdSize &&
+                ` · assumed ${resourceAssignment.householdSize} people`}
+            </p>
+          ) : (
+            <p>{unassigned?.reason ?? 'No resource assignment is available.'}</p>
+          )}
+        </div>
       </section>
       <div className="data-quality score-confidence">
         <div className="quality-heading">
@@ -174,7 +190,7 @@ export function WhyRankPanel({
           {vulnerabilityFields.map(([field, label]) => (
             <div key={field}>
               <dt>{label}</dt>
-              <dd>{displayValue(household[field])}</dd>
+              <dd>{displayValue(household[field], field === 'data_completeness')}</dd>
             </div>
           ))}
         </dl>

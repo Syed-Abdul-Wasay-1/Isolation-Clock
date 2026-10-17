@@ -2,16 +2,20 @@ import { useMemo, useState } from 'react'
 import { IsolationMap } from '../components/IsolationMap'
 import { RankingPanel } from '../components/RankingPanel'
 import type { RankingTab } from '../components/RankingPanel'
+import { ResourceAllocationPanel } from '../components/ResourceAllocationPanel'
 import { WhyRankPanel } from '../components/WhyRankPanel'
 import { useStudyData } from '../hooks/useStudyData'
 import { getHouseholdScenario } from '../simulation/householdStatus'
-import { getPriorityScore } from '../simulation/priorityScore'
+import { compareHouseholdPriority, getPriorityScore } from '../simulation/priorityScore'
+import { DEFAULT_RESOURCE_CONFIG, matchResources } from '../simulation/resourceMatching'
+import type { ResourceConfig } from '../simulation/resourceMatching'
 
 export function IsolationClockPage() {
   const dataState = useStudyData()
   const [scenarioLevel, setScenarioLevel] = useState(0)
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<RankingTab>('evacuate')
+  const [resourceConfig, setResourceConfig] = useState<ResourceConfig>(DEFAULT_RESOURCE_CONFIG)
 
   const scenarios = useMemo(() => {
     if (dataState.status !== 'ready') return []
@@ -27,6 +31,17 @@ export function IsolationClockPage() {
     })
   }, [dataState, scenarioLevel])
 
+  const rankedHouseholds = scenarios
+    .map((scenario) => ({ scenario, priority: getPriorityScore(scenario) }))
+    .sort((first, second) =>
+      compareHouseholdPriority(
+        first.scenario,
+        first.priority,
+        second.scenario,
+        second.priority,
+      ),
+    )
+
   if (dataState.status === 'loading') {
     return <main className="loading-screen"><span className="loading-mark">IC</span><p>Preparing the Sukkur scenario…</p></main>
   }
@@ -40,14 +55,12 @@ export function IsolationClockPage() {
       </main>
     )
   }
-
   const { data } = dataState
-  const rankedHouseholds = scenarios
-    .map((scenario) => ({ scenario, priority: getPriorityScore(scenario) }))
-    .sort((first, second) =>
-      second.priority.total - first.priority.total ||
-      first.scenario.household.id.localeCompare(second.scenario.household.id),
-    )
+  const allocation = matchResources(
+    rankedHouseholds.map(({ scenario }) => scenario),
+    resourceConfig,
+    data.shelters,
+  )
   const isolatedHouseholds = rankedHouseholds.filter(
     ({ scenario }) => scenario.status === 'isolated',
   )
@@ -113,6 +126,7 @@ export function IsolationClockPage() {
               scenarioLevel={scenarioLevel}
               selectedHouseholdId={selectedHouseholdId}
               onSelectHousehold={setSelectedHouseholdId}
+              allocation={allocation}
             />
           </div>
           <div className="map-footnote">
@@ -143,6 +157,18 @@ export function IsolationClockPage() {
             <div className="slider-scale"><span>0 · lower exposure</span><span>100 · higher exposure</span></div>
           </section>
 
+          <ResourceAllocationPanel
+            allocation={allocation}
+            config={resourceConfig}
+            onConfigChange={(key, value) => {
+              if (!Number.isFinite(value) || value < 0) return
+              setResourceConfig((current) => ({
+                ...current,
+                [key]: key === 'bedCapacityMultiplier' ? value : Math.floor(value),
+              }))
+            }}
+          />
+
           {selectedHousehold ? (
             <WhyRankPanel
               scenario={selectedHousehold.scenario}
@@ -151,6 +177,10 @@ export function IsolationClockPage() {
               safePlaces={[...data.shelters, ...data.hospitals]}
               scenarioLevel={scenarioLevel}
               riseRateDefault={data.riseRateDefault}
+              resourceAssignment={allocation.assignments.get(selectedHousehold.scenario.household.id)}
+              unassigned={allocation.unassigned.find(
+                (item) => item.scenario.household.id === selectedHousehold.scenario.household.id,
+              )}
               onBack={() => {
                 setActiveTab(selectedHousehold.scenario.status === 'isolated' ? 'rescue' : 'evacuate')
                 setSelectedHouseholdId(null)
@@ -164,6 +194,7 @@ export function IsolationClockPage() {
               totalHouseholds={data.households.length}
               selectedHouseholdId={selectedHouseholdId}
               activeTab={activeTab}
+              allocation={allocation}
               onTabChange={setActiveTab}
               onSelectHousehold={setSelectedHouseholdId}
             />
