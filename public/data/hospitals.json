@@ -2,25 +2,25 @@
   "synthetic": true,
   "seed": 20261017,
   "bounding_box": {
-    "min_lat": 25.805,
-    "min_lon": 68.41,
-    "max_lat": 25.825,
-    "max_lon": 68.435
+    "min_lat": 27.688,
+    "min_lon": 68.838,
+    "max_lat": 27.711,
+    "max_lon": 68.883
   },
   "hospitals": [
     {
       "id": "HOSP1",
-      "name": "Hala District Hospital",
-      "lat": 25.8158,
-      "lon": 68.4198,
+      "name": "HIRA hospital",
+      "lat": 27.691213,
+      "lon": 68.855436,
       "capacity": 220
     },
     {
       "id": "HOSP2",
-      "name": "Hala Medical Centre",
-      "lat": 25.8183,
-      "lon": 68.432,
-      "capacity": 180
+      "name": NaN,
+      "lat": 27.702942,
+      "lon": 68.843892,
+      "capacity": 260
     }
   ]
 }

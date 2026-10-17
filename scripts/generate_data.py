@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate synthetic data for the Isolation Clock flood-response prototype.
 
-The study area is Hala, Sindh, Pakistan. Household data remains synthetic and intentionally
-messy, while building and road data come from real OSM map information when available.
+The study area is Sukkur, Sindh, Pakistan. Household data remains synthetic and intentionally
+messy, while buildings, roads and amenities come from real OSM map information when available.
 """
 
 from __future__ import annotations
@@ -11,17 +11,17 @@ import json
 import math
 import random
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import geopandas as gpd
 import osmnx as ox
 
-# Hala, Sindh, Pakistan study area.
+# Sukkur, Sindh, Pakistan study area.
 BOUNDING_BOX = {
-    "min_lat": 25.805,
-    "min_lon": 68.410,
-    "max_lat": 25.825,
-    "max_lon": 68.435,
+    "min_lat": 27.688,
+    "min_lon": 68.838,
+    "max_lat": 27.711,
+    "max_lon": 68.883,
 }
 SEED = 20261017
 
@@ -41,13 +41,31 @@ def choose_weighted(rng: random.Random, options: List[tuple[Any, float]]) -> Any
     return options[-1][0]
 
 
-def cache_path_for(name: str) -> Path:
+def bbox_key() -> str:
+    return (
+        f"{BOUNDING_BOX['min_lat']}_{BOUNDING_BOX['max_lat']}"
+        f"_{BOUNDING_BOX['min_lon']}_{BOUNDING_BOX['max_lon']}"
+    ).replace(".", "_")
+
+
+def cache_path_for(prefix: str) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    return DATA_DIR / name
+    return DATA_DIR / f"{prefix}_{bbox_key()}.geojson"
+
+
+def remove_stale_hala_caches() -> None:
+    for cache_file in DATA_DIR.glob("hala_*"):
+        if cache_file.is_file():
+            try:
+                cache_file.unlink()
+                print(f"Removed stale Hala cache: {cache_file.name}")
+            except OSError as exc:
+                print(f"Warning: could not remove stale Hala cache {cache_file.name}: {exc}")
 
 
 def fetch_cached_buildings() -> Tuple[Optional[gpd.GeoDataFrame], bool, int]:
-    cache_file = cache_path_for("hala_buildings.geojson")
+    cache_file = cache_path_for("buildings")
+    remove_stale_hala_caches()
     if cache_file.exists():
         try:
             gdf = gpd.read_file(cache_file)
@@ -66,18 +84,18 @@ def fetch_cached_buildings() -> Tuple[Optional[gpd.GeoDataFrame], bool, int]:
             tags={"building": True},
         )
         if gdf.empty:
-            print("Warning: no building footprints found in the Hala bounds; falling back to road-proximate points.")
+            print("Warning: no building footprints were returned for Sukkur; household placement will use the road-proximate fallback.")
             return None, True, 0
         gdf = gdf[gdf.geometry.notnull()].copy()
         gdf.to_file(cache_file, driver="GeoJSON")
         return gdf, False, len(gdf)
     except Exception as exc:
-        print(f"Warning: OSM building download failed for Hala ({exc}); using road-proximate fallback points.")
+        print(f"Warning: OSM building download failed for Sukkur ({exc}); household placement will use the road-proximate fallback.")
         return None, True, 0
 
 
 def fetch_cached_amenities() -> gpd.GeoDataFrame:
-    cache_file = cache_path_for("hala_amenities.geojson")
+    cache_file = cache_path_for("amenities")
     if cache_file.exists():
         try:
             return gpd.read_file(cache_file)
@@ -96,13 +114,24 @@ def fetch_cached_amenities() -> gpd.GeoDataFrame:
             tags=amenity_tags,
         )
         if gdf.empty:
-            return gpd.GeoDataFrame(columns=["amenity", "geometry"])
+            empty = gpd.GeoDataFrame(columns=["amenity", "geometry"])
+            empty.to_file(cache_file, driver="GeoJSON")
+            return empty
         gdf = gdf[gdf.geometry.notnull()].copy()
         gdf.to_file(cache_file, driver="GeoJSON")
         return gdf
     except Exception as exc:
-        print(f"Warning: OSM amenity download failed for Hala ({exc}); using fixed fallback shelter and hospital points.")
+        print(f"Warning: OSM amenity download failed for Sukkur ({exc}); shelter and hospital categories will use their fixed fallback points if no OSM amenities are available.")
         return gpd.GeoDataFrame(columns=["amenity", "geometry"])
+
+
+def centroid_geometries(gdf: gpd.GeoDataFrame) -> gpd.GeoSeries:
+    if gdf.crs is None:
+        return gdf.geometry.centroid
+    projected_crs = gdf.estimate_utm_crs()
+    if projected_crs is None:
+        return gdf.geometry.centroid
+    return gdf.to_crs(projected_crs).geometry.centroid.to_crs(gdf.crs)
 
 
 def random_point_near_road(rng: random.Random, road_nodes: Sequence[Tuple[float, float]]) -> Tuple[float, float]:
@@ -128,10 +157,10 @@ def generate_road_node_points(rng: random.Random, count: int) -> List[Tuple[floa
             network_type="drive",
         )
     except Exception as exc:
-        raise RuntimeError(f"Road network lookup failed for fallback placement: {exc}") from exc
+        raise RuntimeError(f"Road network lookup failed for Sukkur fallback placement: {exc}") from exc
 
     if graph.number_of_nodes() == 0:
-        raise RuntimeError("No road nodes were returned for the Hala fallback area.")
+        raise RuntimeError("No road nodes were returned for the Sukkur fallback area.")
 
     nodes = [(data["y"], data["x"]) for _, data in graph.nodes(data=True)]
     if len(nodes) < count:
@@ -148,28 +177,47 @@ def generate_road_node_points(rng: random.Random, count: int) -> List[Tuple[floa
     return points
 
 
+def jitter_point_meters(
+    point: Tuple[float, float], rng: random.Random, min_distance_m: float = 2.0, max_distance_m: float = 5.0
+) -> Tuple[float, float]:
+    lat, lon = point
+    angle = rng.uniform(0, 2 * math.pi)
+    distance_m = rng.uniform(min_distance_m, max_distance_m)
+    offset_lat = distance_m * math.cos(angle) / 111_320.0
+    offset_lon = distance_m * math.sin(angle) / (111_320.0 * math.cos(math.radians(lat)))
+    return (
+        min(BOUNDING_BOX["max_lat"], max(BOUNDING_BOX["min_lat"], lat + offset_lat)),
+        min(BOUNDING_BOX["max_lon"], max(BOUNDING_BOX["min_lon"], lon + offset_lon)),
+    )
+
+
 def build_household_points(buildings_gdf: Optional[gpd.GeoDataFrame], rng: random.Random) -> Tuple[List[Tuple[float, float]], bool, int]:
     if buildings_gdf is not None and not buildings_gdf.empty:
         candidate_points: List[Tuple[float, float]] = []
-        for geom in buildings_gdf.geometry:
-            if geom is None:
+        building_centroids = centroid_geometries(buildings_gdf)
+        for centroid in building_centroids:
+            if centroid is None:
                 continue
-            centroid = geom.centroid
-            candidate_points.append((float(centroid.y), float(centroid.x)))
+            lat, lon = float(centroid.y), float(centroid.x)
+            if (
+                BOUNDING_BOX["min_lat"] <= lat <= BOUNDING_BOX["max_lat"]
+                and BOUNDING_BOX["min_lon"] <= lon <= BOUNDING_BOX["max_lon"]
+            ):
+                candidate_points.append((lat, lon))
 
-        if len(candidate_points) >= 400:
+        if len(candidate_points) >= 100:
             cluster_defs = [
-                (25.8131, 68.4175, 140),
-                (25.8160, 68.4225, 102),
-                (25.8184, 68.4274, 84),
-                (25.8112, 68.4297, 66),
+                (27.6995, 68.8610, 140),
+                (27.7020, 68.8635, 102),
+                (27.7050, 68.8700, 84),
+                (27.6978, 68.8730, 66),
             ]
             selected: List[Tuple[float, float]] = []
             used = set()
             for center_lat, center_lon, target_count in cluster_defs:
                 nearby = [
                     point for point in candidate_points
-                    if abs(point[0] - center_lat) <= 0.006 and abs(point[1] - center_lon) <= 0.006
+                    if abs(point[0] - center_lat) <= 0.008 and abs(point[1] - center_lon) <= 0.008
                 ]
                 if not nearby:
                     nearby = candidate_points
@@ -185,14 +233,17 @@ def build_household_points(buildings_gdf: Optional[gpd.GeoDataFrame], rng: rando
                     selected.append(point)
 
             if len(selected) < 400:
-                remaining = [point for point in candidate_points if point not in used]
-                rng.shuffle(remaining)
-                selected.extend(remaining[: 400 - len(selected)])
+                selected.extend(rng.choices(candidate_points, k=400 - len(selected)))
 
-            selected = selected[:400]
+            selected = [jitter_point_meters(point, rng) for point in selected[:400]]
             return selected, False, len(candidate_points)
 
-    print("Warning: building availability was insufficient; using road-proximate fallback points within 150 m of roads.")
+        print(
+            f"Warning: only {len(candidate_points)} building centroids were available "
+            "(fewer than 100); using road-proximate fallback points within 150 m of roads."
+        )
+    else:
+        print("Warning: the OSM building download failed or returned no usable buildings; using road-proximate fallback points.")
     points = generate_road_node_points(rng, 400)
     return points, True, 0
 
@@ -335,31 +386,29 @@ def generate_shelters() -> List[Dict[str, Any]]:
 
     shelters: List[Dict[str, Any]] = []
     if not shelter_candidates.empty:
-        for i, row in enumerate(shelter_candidates.geometry.centroid.head(5), start=1):
-            name = row.name if hasattr(row, "name") else None
+        centroids = centroid_geometries(shelter_candidates)
+        for i, (index, row) in enumerate(shelter_candidates.head(5).iterrows(), start=1):
+            centroid = centroids.loc[index]
             shelters.append(
                 {
                     "id": f"S{i}",
-                    "name": name or f"Shelter {i}",
-                    "lat": round(float(row.y), 6),
-                    "lon": round(float(row.x), 6),
+                    "name": row.get("name") or f"{row.get('amenity', 'OSM')} {i}",
+                    "lat": round(float(centroid.y), 6),
+                    "lon": round(float(centroid.x), 6),
                     "capacity": 80 + (i * 25),
                 }
             )
 
-    if len(shelters) < 5:
-        print("Warning: no suitable OSM shelter amenities found in the Hala box; using fixed fallback shelter points.")
+    if shelter_candidates.empty:
+        print("Warning: Sukkur has no OSM school, community_centre, or place_of_worship amenities; using fixed shelter fallback points.")
         fallback = [
-            {"id": "S1", "name": "Hala Community Shelter", "lat": 25.8132, "lon": 68.4189, "capacity": 90},
-            {"id": "S2", "name": "Hala Market Shelter", "lat": 25.8172, "lon": 68.4246, "capacity": 120},
-            {"id": "S3", "name": "Hala School Shelter", "lat": 25.8195, "lon": 68.4290, "capacity": 110},
-            {"id": "S4", "name": "Hala Civic Shelter", "lat": 25.8114, "lon": 68.4278, "capacity": 100},
-            {"id": "S5", "name": "Hala East Shelter", "lat": 25.8154, "lon": 68.4318, "capacity": 130},
+            {"id": "S1", "name": "Sukkur Community Shelter", "lat": 27.7008, "lon": 68.8605, "capacity": 90},
+            {"id": "S2", "name": "Sukkur Market Shelter", "lat": 27.7022, "lon": 68.8684, "capacity": 120},
+            {"id": "S3", "name": "Sukkur School Shelter", "lat": 27.7065, "lon": 68.8698, "capacity": 110},
+            {"id": "S4", "name": "Sukkur Civic Shelter", "lat": 27.6989, "lon": 68.8769, "capacity": 100},
+            {"id": "S5", "name": "Sukkur East Shelter", "lat": 27.7040, "lon": 68.8795, "capacity": 130},
         ]
-        for item in fallback:
-            if len(shelters) >= 5:
-                break
-            shelters.append(item)
+        shelters = fallback
 
     return shelters[:5]
 
@@ -371,28 +420,26 @@ def generate_hospitals() -> List[Dict[str, Any]]:
 
     hospitals: List[Dict[str, Any]] = []
     if not hospital_candidates.empty:
-        for i, row in enumerate(hospital_candidates.geometry.centroid.head(2), start=1):
-            name = row.name if hasattr(row, "name") else None
+        centroids = centroid_geometries(hospital_candidates)
+        for i, (index, row) in enumerate(hospital_candidates.head(2).iterrows(), start=1):
+            centroid = centroids.loc[index]
             hospitals.append(
                 {
                     "id": f"HOSP{i}",
-                    "name": name or f"Hospital {i}",
-                    "lat": round(float(row.y), 6),
-                    "lon": round(float(row.x), 6),
+                    "name": row.get("name") or f"{row.get('amenity', 'OSM')} {i}",
+                    "lat": round(float(centroid.y), 6),
+                    "lon": round(float(centroid.x), 6),
                     "capacity": 180 + (i * 40),
                 }
             )
 
-    if len(hospitals) < 2:
-        print("Warning: no suitable OSM hospital or clinic amenities found in the Hala box; using fixed fallback hospital points.")
+    if hospital_candidates.empty:
+        print("Warning: Sukkur has no OSM hospital or clinic amenities; using fixed hospital fallback points.")
         fallback = [
-            {"id": "HOSP1", "name": "Hala District Hospital", "lat": 25.8158, "lon": 68.4198, "capacity": 220},
-            {"id": "HOSP2", "name": "Hala Medical Centre", "lat": 25.8183, "lon": 68.4320, "capacity": 180},
+            {"id": "HOSP1", "name": "Sukkur District Hospital", "lat": 27.7007, "lon": 68.8580, "capacity": 220},
+            {"id": "HOSP2", "name": "Sukkur Medical Centre", "lat": 27.7060, "lon": 68.8778, "capacity": 180},
         ]
-        for item in fallback:
-            if len(hospitals) >= 2:
-                break
-            hospitals.append(item)
+        hospitals = fallback
 
     return hospitals[:2]
 
@@ -403,11 +450,27 @@ def write_json(path: Path, payload: Dict[str, Any]) -> None:
         handle.write("\n")
 
 
-def build_dataset() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], bool, int]:
+def build_dataset() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], bool, int, Dict[str, int], Dict[str, Any]]:
     buildings_gdf, fallback_used, buildings_found = fetch_cached_buildings()
     households, fallback_used_households, buildings_found_used = generate_households(buildings_gdf)
+    amenity_gdf = fetch_cached_amenities()
+    amenity_counts = {
+        amenity_type: int((amenity_gdf["amenity"] == amenity_type).sum())
+        if "amenity" in amenity_gdf.columns else 0
+        for amenity_type in ["school", "community_centre", "place_of_worship", "hospital", "clinic"]
+    }
     shelters = generate_shelters()
     hospitals = generate_hospitals()
+    shelter_osm_count = min(
+        5,
+        amenity_counts["school"] + amenity_counts["community_centre"] + amenity_counts["place_of_worship"],
+    )
+    hospital_osm_count = min(2, amenity_counts["hospital"] + amenity_counts["clinic"])
+    fallback_details = {
+        "households": fallback_used or fallback_used_households,
+        "shelters": shelter_osm_count == 0,
+        "hospitals": hospital_osm_count == 0,
+    }
 
     return (
         {
@@ -428,25 +491,41 @@ def build_dataset() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], boo
             "bounding_box": BOUNDING_BOX,
             "hospitals": hospitals,
         },
-        fallback_used or fallback_used_households,
+        any(fallback_details.values()),
         max(buildings_found, buildings_found_used),
+        amenity_counts,
+        {
+            "by_category": fallback_details,
+            "real_osm_shelters_used": 0 if fallback_details["shelters"] else shelter_osm_count,
+            "real_osm_hospitals_used": 0 if fallback_details["hospitals"] else hospital_osm_count,
+        },
     )
 
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    households_payload, shelters_payload, hospitals_payload, fallback_used, buildings_found = build_dataset()
+    (
+        households_payload,
+        shelters_payload,
+        hospitals_payload,
+        fallback_used,
+        buildings_found,
+        amenity_counts,
+        fallback_details,
+    ) = build_dataset()
     write_json(OUTPUT_DIR / "households.json", households_payload)
     write_json(OUTPUT_DIR / "shelters.json", shelters_payload)
     write_json(OUTPUT_DIR / "hospitals.json", hospitals_payload)
 
     meta = {
         "synthetic": True,
-        "study_area": "Hala, Sindh, Pakistan",
+        "study_area": "Sukkur, Sindh, Pakistan",
         "seed": SEED,
         "bounding_box": BOUNDING_BOX,
         "buildings_found": buildings_found,
+        "amenity_counts": amenity_counts,
         "fallback_used": fallback_used,
+        "fallback_details": fallback_details,
         "generated_files": [
             "households.json",
             "shelters.json",
@@ -455,15 +534,20 @@ def main() -> None:
         ],
         "notes": [
             "Household data is synthetic and intentionally noisy to simulate incomplete field data.",
-            "Only the building and road map layers are derived from real OpenStreetMap data in the Hala study area.",
-            "If building data is unavailable or sparse, household placement falls back to road-proximate points.",
+            "Buildings, roads and amenities are real OpenStreetMap map data for the Sukkur study area; all household details are synthetic.",
+            "Household placement uses jittered building centroids unless fewer than 100 buildings are available or the building query fails.",
+            "Fixed shelter or hospital points are used only when the corresponding OSM amenity category has no results.",
         ],
     }
     write_json(OUTPUT_DIR / "meta.json", meta)
 
-    print(f"Generated datasets for Hala, Sindh, Pakistan")
+    print("OSM amenity counts: " + ", ".join(f"{key}={value}" for key, value in amenity_counts.items()))
+    print(f"Real OSM shelters used: {fallback_details['real_osm_shelters_used']}")
+    print(f"Real OSM hospitals used: {fallback_details['real_osm_hospitals_used']}")
+    print("Generated datasets for Sukkur, Sindh, Pakistan")
     print(f"Buildings found: {buildings_found}")
     print(f"Fallback used: {fallback_used}")
+    print(f"Fallback details: {fallback_details['by_category']}")
     print(f"Households: {len(households_payload['households'])}")
     print(f"Shelters: {len(shelters_payload['shelters'])}")
     print(f"Hospitals: {len(hospitals_payload['hospitals'])}")

@@ -1,15 +1,31 @@
 {
   "synthetic": true,
-  "study_area": "Hala, Sindh, Pakistan",
+  "study_area": "Sukkur, Sindh, Pakistan",
   "seed": 20261017,
   "bounding_box": {
-    "min_lat": 25.805,
-    "min_lon": 68.41,
-    "max_lat": 25.825,
-    "max_lon": 68.435
+    "min_lat": 27.688,
+    "min_lon": 68.838,
+    "max_lat": 27.711,
+    "max_lon": 68.883
   },
-  "buildings_found": 0,
-  "fallback_used": true,
+  "buildings_found": 144,
+  "amenity_counts": {
+    "school": 12,
+    "community_centre": 1,
+    "place_of_worship": 26,
+    "hospital": 10,
+    "clinic": 3
+  },
+  "fallback_used": false,
+  "fallback_details": {
+    "by_category": {
+      "households": false,
+      "shelters": false,
+      "hospitals": false
+    },
+    "real_osm_shelters_used": 5,
+    "real_osm_hospitals_used": 2
+  },
   "generated_files": [
     "households.json",
     "shelters.json",
@@ -18,7 +34,8 @@
   ],
   "notes": [
     "Household data is synthetic and intentionally noisy to simulate incomplete field data.",
-    "Only the building and road map layers are derived from real OpenStreetMap data in the Hala study area.",
-    "If building data is unavailable or sparse, household placement falls back to road-proximate points."
+    "Buildings, roads and amenities are real OpenStreetMap map data for the Sukkur study area; all household details are synthetic.",
+    "Household placement uses jittered building centroids unless fewer than 100 buildings are available or the building query fails.",
+    "Fixed shelter or hospital points are used only when the corresponding OSM amenity category has no results."
   ]
 }

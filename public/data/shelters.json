@@ -2,46 +2,46 @@
   "synthetic": true,
   "seed": 20261017,
   "bounding_box": {
-    "min_lat": 25.805,
-    "min_lon": 68.41,
-    "max_lat": 25.825,
-    "max_lon": 68.435
+    "min_lat": 27.688,
+    "min_lon": 68.838,
+    "max_lat": 27.711,
+    "max_lon": 68.883
   },
   "shelters": [
     {
       "id": "S1",
-      "name": "Hala Community Shelter",
-      "lat": 25.8132,
-      "lon": 68.4189,
-      "capacity": 90
+      "name": "Masjid School",
+      "lat": 27.704949,
+      "lon": 68.857948,
+      "capacity": 105
     },
     {
       "id": "S2",
-      "name": "Hala Market Shelter",
-      "lat": 25.8172,
-      "lon": 68.4246,
-      "capacity": 120
+      "name": "Makki Masjid",
+      "lat": 27.695585,
+      "lon": 68.87224,
+      "capacity": 130
     },
     {
       "id": "S3",
-      "name": "Hala School Shelter",
-      "lat": 25.8195,
-      "lon": 68.429,
-      "capacity": 110
+      "name": NaN,
+      "lat": 27.697293,
+      "lon": 68.853098,
+      "capacity": 155
     },
     {
       "id": "S4",
-      "name": "Hala Civic Shelter",
-      "lat": 25.8114,
-      "lon": 68.4278,
-      "capacity": 100
+      "name": "Masjid Bait ul Mukaram",
+      "lat": 27.704837,
+      "lon": 68.840913,
+      "capacity": 180
     },
     {
       "id": "S5",
-      "name": "Hala East Shelter",
-      "lat": 25.8154,
-      "lon": 68.4318,
-      "capacity": 130
+      "name": "Jama Masjid Gulzar E Habib",
+      "lat": 27.709859,
+      "lon": 68.839791,
+      "capacity": 205
     }
   ]
 }

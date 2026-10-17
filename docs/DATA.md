@@ -1,8 +1,8 @@
 # Synthetic data format
 
-This project is scoped to the **Hala, Sindh, Pakistan** study area. The generated files under
-`public/data/` intentionally use synthetic, non-personal household data only. The map layers are
-real OpenStreetMap-derived data for the buildings and roads in this area, but all household
+This project is scoped to the **Sukkur, Sindh, Pakistan** study area. The generated files under
+`public/data/` intentionally use synthetic, non-personal household data only. Buildings, roads and
+amenities are real OpenStreetMap-derived map data for this area, while all household details
 attributes are fabricated for demo and testing.
 
 ## Household fields
@@ -57,7 +57,11 @@ Every generated file includes:
 
 - `synthetic: true`: confirms the data is fabricated for prototyping only.
 - `seed`: the fixed random seed used to make results reproducible.
-- `bounding_box`: the placeholder study-area bounds used when generating the records.
+- `bounding_box`: the Sukkur study-area bounds used when generating the records.
+- `buildings_found`: number of OSM building features used for household placement.
+- `amenity_counts`: OSM feature count for each queried amenity type.
+- `fallback_used`: whether any household or facility category required fallback data.
+- `fallback_details`: fallback status by households, shelters and hospitals, including real OSM facility counts used.
 
 ## Data quality note
 
@@ -65,7 +69,9 @@ A small percentage of records intentionally contain `null` values and near-dupli
 
 ## Shelter and hospital placement
 
-Shelters and hospitals are chosen from real OSM amenities in the Hala bounding box when they exist
-(`school`, `hospital`, `clinic`, `community_centre`, `place_of_worship`). If the box contains no
-eligible amenities, the generator falls back to sensible fixed coordinates near the study area and
-prints a warning so the fallback is explicit.
+Shelters are placed at real OSM `school`, `community_centre` and `place_of_worship` features;
+hospitals use real `hospital` and `clinic` features. The generator prints counts for every type.
+Fixed fallback points are used only for a facility category that has no matching OSM features, and
+a warning identifies the category. Household points use jittered OSM building centroids; if the
+building query fails or returns fewer than 100 buildings, the script warns and uses points within
+150 metres of real OSM roads instead.
