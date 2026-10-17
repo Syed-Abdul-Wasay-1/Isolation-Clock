@@ -1,5 +1,3 @@
-export const SMS_CONFIDENCE_STEP = 0.2
-
 export interface SmsQueuedMessage {
   id: string
   householdId: string

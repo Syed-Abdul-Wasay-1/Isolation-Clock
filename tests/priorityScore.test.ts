@@ -232,3 +232,50 @@ test('household helper only changes the requested field', () => {
   assert.equal(record.id, 'custom')
   assert.equal(record.household_size, 4)
 })
+
+describe('SMS check-in signals', () => {
+  test('adds the help-request weight only when help was requested', () => {
+    const requested = new Map(
+      getPriorityScore(scenario({ needs_help: true })).factors.map((factor) => [
+        factor.key,
+        factor.points,
+      ]),
+    )
+    const quiet = new Map(
+      getPriorityScore(scenario({ needs_help: false })).factors.map((factor) => [
+        factor.key,
+        factor.points,
+      ]),
+    )
+
+    assert.equal(requested.get('needsHelp'), PRIORITY_WEIGHTS.needsHelp)
+    assert.equal(quiet.get('needsHelp'), 0)
+  })
+
+  test('raises the practical maximum to 95 with a help request', () => {
+    const score = getPriorityScore(
+      scenario(vulnerableHousehold({ needs_help: true }), 'isolated', 0),
+    )
+
+    assert.equal(score.total, 95)
+  })
+
+  test('records unverified SMS reports without raising confidence', () => {
+    const base = getPriorityScore(scenario({ age_band: null, mobility: null }))
+    const reported = getPriorityScore(scenario({ age_band: null, mobility: null }), 3)
+
+    assertClose(reported.confidence, base.confidence)
+    assertClose(reported.confidence, 0.6)
+    assert.equal(base.unverifiedReportCount, 0)
+    assert.equal(reported.unverifiedReportCount, 3)
+  })
+
+  test('bands a three-field gap as Medium rather than Low', () => {
+    const score = getPriorityScore(
+      scenario({ age_band: null, mobility: null, medical_need: null }),
+    )
+
+    assertClose(score.confidence, 0.4, 1e-6)
+    assert.equal(score.confidenceLevel, 'Medium')
+  })
+})

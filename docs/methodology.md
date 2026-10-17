@@ -80,14 +80,15 @@ configurable, illustrative choice — the point is that **who lives there** feed
 ```text
 Urgency        = 35                        if the household is already isolated
                = 35 × (1 − min(ETI, 6)/6)   otherwise  (0 when ETI ≥ 6 h or unknown)
-Priority score = Urgency + known vulnerability points      # bounded 0–100, practical max 85
+Priority score = Urgency + known vulnerability points      # bounded 0–100, practical max 95
 Confidence     = max(0, 1 − 0.2 × count(missing vulnerability fields))
 ```
 
 Households are ordered by priority score, then by ETI (ascending), fewer missing fields, and id.
 The ranking is split into two tabs — **Needs rescue now** (already isolated) and **Not yet
 isolated** — and every row is **explainable**: it names the safe place, the bottleneck road and the
-top contributing factors. Confidence is reported separately and does **not** change the score.
+top contributing factors. Confidence is reported separately and does **not** change the score;
+unverified SMS check-ins are counted separately and never raise it.
 
 ## 6. How we'd validate it
 

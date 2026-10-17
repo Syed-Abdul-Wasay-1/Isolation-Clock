@@ -32,9 +32,10 @@ THE MODEL (do not change the meaning of these without saying so)
 - Status: isolated when scenarioLevel >= isolation_level; urgent when ETI <= 3 h; else safe;
   unknown when isolation_level is null.
 - Priority score = urgency (max 35) + vulnerability (age 65+ 12, lives alone 10, mobility 12,
-  medical need 10, no phone 6; max 50). Practical max is 85, displayed out of 100.
-- Confidence is separate from the score: 1 - 0.2 * (number of missing vulnerability fields).
-  Missing fields add zero points and only lower confidence.
+  medical need 10, no phone 6, SMS help request 10; max 60). Practical max is 95, displayed out of 100.
+- Confidence (completeness) is separate from the score: 1 - 0.2 * (number of missing vulnerability
+  fields), floored at 0. Missing fields add zero points and only lower confidence. Applied SMS
+  check-ins are unverified and never raise it; they are reported as a separate count.
 - Ranking: score desc, then ETI asc, then fewer missing fields, then household id.
 - Resource matching is greedy: already-isolated households get boats, others get vehicles, closest
   shelter with enough beds (straight-line Haversine distance), beds consumed by household size.

@@ -82,7 +82,10 @@ export function WhyRankPanel({
   const explanation = reasons.length
     ? `Ranked #${rank} mainly because ${reasons.join(' and ')}.`
     : `Ranked #${rank} because no urgency or vulnerability factors currently add points.`
+  // `needs_help` only ever arrives from an SMS check-in, so it is absent for almost every
+  // household. Do not report it as missing data (the score's confidence already ignores it).
   const missingFields = vulnerabilityFields
+    .filter(([field]) => field !== 'needs_help')
     .filter(([field]) => household[field] === null || household[field] === undefined)
     .map(([, label]) => label)
 
@@ -184,7 +187,21 @@ export function WhyRankPanel({
             Confidence · {priority.confidenceLevel} · {priority.missingFieldCount} of 5 missing
           </strong>
         </div>
-        <p>Confidence starts from missing vulnerability fields. Each SMS check-in adds 20 points, capped at High. Missing fields add no vulnerability points.</p>
+        <p>
+          Confidence depends only on missing vulnerability fields. SMS check-ins are unverified and
+          do not raise it; they are tracked separately as verification.
+        </p>
+        <p>
+          Verification:{' '}
+          <strong>
+            {priority.unverifiedReportCount === 0
+              ? 'no unverified SMS reports'
+              : `${priority.unverifiedReportCount} unverified SMS ${
+                  priority.unverifiedReportCount === 1 ? 'report' : 'reports'
+                }`}
+          </strong>
+          .
+        </p>
         {priority.confidenceNotes.length > 0 ? (
           <ul>
             {priority.confidenceNotes.map((note) => <li key={note}>{note}</li>)}
@@ -220,16 +237,21 @@ export function WhyRankPanel({
           </div>
         </div>
         <dl className="vulnerability-grid">
-          {vulnerabilityFields.map(([field, label]) => (
-            <div key={field}>
-              <dt>{label}</dt>
-              <dd>
-                {displayValue(household[field], field === 'data_completeness')}
-                {smsReportedFields.some((reportedField) => reportedField === field) &&
-                  ' · SMS-reported, unverified'}
-              </dd>
-            </div>
-          ))}
+          {vulnerabilityFields.map(([field, label]) => {
+            const value = household[field]
+            // Hide the SMS-only field unless a check-in actually supplied it.
+            if (field === 'needs_help' && (value === null || value === undefined)) return null
+            return (
+              <div key={field}>
+                <dt>{label}</dt>
+                <dd>
+                  {displayValue(value, field === 'data_completeness')}
+                  {smsReportedFields.some((reportedField) => reportedField === field) &&
+                    ' · SMS-reported, unverified'}
+                </dd>
+              </div>
+            )
+          })}
         </dl>
       </div>
       <div className="data-quality">

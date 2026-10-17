@@ -28,6 +28,9 @@ how long before every road out of a household is closed and it can no longer be 
 4. **Change the model, then the docs.** If you change a weight, formula, file shape or unit, update
    the matching doc under `docs/` and say which one you changed.
 5. **Log every substantive AI interaction** in `prompts/prompts.md` (see §7).
+6. **The user owns git.** Never run `git commit`, `git push`, `git merge`, `git rebase` or any other
+   history-changing command. Make your changes in the working tree and stop there — the user reviews
+   and commits them.
 
 ## 3. Read order before you code
 
@@ -60,7 +63,8 @@ npm test           # type-check tests + run the node:test suite in tests/
   Add a case there whenever you change the model.
 - **Data regeneration is optional** and needs Python (osmnx / networkx / geopandas). The generated
   JSON is committed, so the app runs without it. If you do regenerate, use the skill
-  `.agents/skills/data-pipeline/` and commit the resulting `public/data/*.json`.
+  `.agents/skills/data-pipeline/` and leave the regenerated `public/data/*.json` in the working tree
+  for the user to review and commit.
 
 ## 5. Architecture map
 
@@ -90,9 +94,11 @@ Do not change these meanings without flagging it and updating the docs:
 - **Status**: `isolated` when `scenarioLevel >= isolation_level`; `urgent` when ETI ≤ 3 h; else
   `safe`; `unknown` when `isolation_level` is null.
 - **Priority score** = urgency (max 35) + vulnerability (age 65+ 12, lives alone 10, mobility 12,
-  medical need 10, no phone 6; max 50). Practical max is 85, displayed out of 100.
-- **Confidence** is separate from the score: `1 − 0.2 × (missing vulnerability fields)`. Missing
-  fields add **zero** points and only lower confidence.
+  medical need 10, no phone 6, SMS help request 10; max 60). Practical max is 95, displayed out of 100.
+- **Confidence** is **completeness only**, separate from the score:
+  `max(0, 1 − 0.2 × (missing vulnerability fields))`. Missing fields add **zero** points and only
+  lower confidence. Applied SMS check-ins are **unverified**: they never raise confidence and are
+  reported separately as `unverifiedReportCount`.
 - **Ranking order**: score desc, ETI asc, fewer missing fields, household id.
 - **Resource matching** is greedy: isolated → boats, others → vehicles; closest shelter with enough
   beds by **straight-line Haversine** distance; beds consumed by household size. It is a suggestion,
@@ -157,3 +163,5 @@ A task is done only when:
    feature that does not exist.
 4. A new entry is added to `prompts/prompts.md`.
 5. You have told the user how you verified the change, and what you could not verify.
+6. You have **not** committed or pushed anything — the changes are left in the working tree for the
+   user to review and commit themselves.

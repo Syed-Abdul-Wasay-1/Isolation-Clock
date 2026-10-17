@@ -13,7 +13,7 @@ import { getHouseholdScenario } from '../simulation/householdStatus'
 import { compareHouseholdPriority, getPriorityScore } from '../simulation/priorityScore'
 import { DEFAULT_RESOURCE_CONFIG, matchResources } from '../simulation/resourceMatching'
 import type { ResourceConfig } from '../simulation/resourceMatching'
-import { getEffectiveHousehold, SMS_CONFIDENCE_STEP } from '../simulation/smsCheckins'
+import { getEffectiveHousehold } from '../simulation/smsCheckins'
 import type {
   RoadBlockReport,
   SmsCheckinRecord,
@@ -48,10 +48,7 @@ function getRankedHouseholds(
       }
       return {
         scenario: effectiveScenario,
-        priority: getPriorityScore(
-          effectiveScenario,
-          (override?.checkIns.length ?? 0) * SMS_CONFIDENCE_STEP,
-        ),
+        priority: getPriorityScore(effectiveScenario, override?.checkIns.length ?? 0),
       }
     })
     .sort((first, second) =>
@@ -254,7 +251,7 @@ export function IsolationClockPage() {
         changes = 'Free text recorded; no scenario fields changed.'
       }
 
-      changes += ' Confidence +20 points, capped at High.'
+      changes += ' Recorded as an unverified check-in; it does not change confidence.'
       const record: SmsCheckinRecord = {
         id: message.id,
         message: message.message,

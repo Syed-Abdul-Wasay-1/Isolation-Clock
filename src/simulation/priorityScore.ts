@@ -26,10 +26,16 @@ export interface PriorityFactor {
 export interface PriorityScore {
   total: number
   factors: PriorityFactor[]
+  /** Completeness of the vulnerability record: `1 − 0.2 × missing fields`, floored at 0. */
   confidence: number
   confidenceLevel: 'High' | 'Medium' | 'Low'
   confidenceNotes: string[]
   missingFieldCount: number
+  /**
+   * Applied SMS check-ins for this household. They are **unverified** and never raise
+   * `confidence`; they are surfaced as a separate verification signal.
+   */
+  unverifiedReportCount: number
   topFactors: PriorityFactor[]
 }
 
@@ -96,7 +102,7 @@ function isMissing(value: unknown): boolean {
 
 export function getPriorityScore(
   scenario: HouseholdScenario,
-  confidenceBoost = 0,
+  unverifiedReportCount = 0,
 ): PriorityScore {
   const urgencyPoints = scenario.status === 'isolated'
     ? URGENCY_MAX_POINTS
@@ -129,16 +135,25 @@ export function getPriorityScore(
   )
   const confidenceNotes = missingFields.map((factor) => `${factor.description} — missing`)
   const missingFieldCount = missingFields.length
-  const confidence = Math.min(1, Math.max(
+  // Completeness only: how much of the vulnerability record is present. An unverified SMS report
+  // must not raise this, so reports are returned separately as `unverifiedReportCount`.
+  const confidence = Math.max(
     0,
-    1 - missingFieldCount * CONFIDENCE_PENALTY_PER_MISSING_FIELD + confidenceBoost,
-  ))
+    1 - missingFieldCount * CONFIDENCE_PENALTY_PER_MISSING_FIELD,
+  )
 
   return {
     total,
     factors,
     confidence,
-    confidenceLevel: confidence >= 0.8 ? 'High' : confidence >= 0.4 ? 'Medium' : 'Low',
+    unverifiedReportCount,
+    // Compare with a tolerance: 1 - 3 * 0.2 is 0.3999999999999999 in IEEE-754, which would
+    // otherwise band a three-field gap as Low instead of Medium.
+    confidenceLevel: confidence >= 0.8 - 1e-9
+      ? 'High'
+      : confidence >= 0.4 - 1e-9
+        ? 'Medium'
+        : 'Low',
     confidenceNotes,
     missingFieldCount,
     topFactors: factors

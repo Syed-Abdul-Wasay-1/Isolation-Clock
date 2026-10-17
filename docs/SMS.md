@@ -1,17 +1,18 @@
 # SMS check-in simulator
 
 The **SMS check-in** panel is a browser-only mock. It does not send or receive real text
-messages and has no backend. The household data is synthetic, and check-ins, confidence
-adjustments, and unverified road reports exist only in React state for the current page
-session; refreshing the page clears them.
+messages and has no backend. The household data is synthetic, and check-ins, unverified road
+reports and their verification counts exist only in React state for the current page session;
+refreshing the page clears them.
 
 The simulator accepts `1` (safe), `2` (need help), `3` (road blocked), `4` (medical
 help), and free text. A `2` records an unverified help request; a `4` fills a missing
 medical-need value but does not overwrite a known value. These help/medical changes are
-unverified and affect the illustrative priority score. Every applied check-in adds 20
-confidence points, capped at High. A `3` creates an unverified report only; it does not
-close a road or change the model. Offline mode holds messages in local React state and
-applies them when the toggle is turned off.
+unverified and affect the illustrative priority score. Every applied check-in is counted
+as an unverified report and does **not** raise confidence, which measures completeness
+only. A `3` creates an unverified report only; it does not close a road or change the
+model. Offline mode holds messages in local React state and applies them when the toggle
+is turned off.
 
 ## What a real deployment would need
 
@@ -36,6 +37,6 @@ deletion.
 
 SMS reports are not verified evidence. This simulation does not confirm a sender's
 identity, geolocate a message, associate a blocked-road report with a road segment,
-trigger dispatch, persist data, or sync with a server. Confidence adjustments and
+trigger dispatch, persist data, or sync with a server. Verification counts and
 priority weights are illustrative, not validated for operational decisions. This
 simulator must not be used as an emergency service.

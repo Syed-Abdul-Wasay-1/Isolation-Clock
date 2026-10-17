@@ -11,6 +11,7 @@ material we were given.
 | [`methodology.md`](methodology.md) | ETI definition, exposure index, ranking formula |
 | [`SIMULATION.md`](SIMULATION.md) | What the 0–100 road thresholds mean and do not mean |
 | [`SCORING.md`](SCORING.md) | Priority score and confidence formula |
+| [`SMS.md`](SMS.md) | Browser-only SMS check-in simulator: scope, limits, what a real deployment needs |
 | [`ALLOCATION.md`](ALLOCATION.md) | Boat / vehicle / bed assignment rules |
 | [`DATA.md`](DATA.md) | Field-level reference for the generated data |
 | [`assumptions.md`](assumptions.md) | Every assumption we made, stated plainly |

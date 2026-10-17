@@ -271,6 +271,27 @@ weights, resource rules, UX and the pitch.
   14 tasks with steps and "done when" criteria plus a T-1-day timing plan. Linked it from `AGENTS.md`
   (read order) and the README project tree.
 
+### 2026-10-17 - Review the merged SMS feature and repair what it drifted - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Goal:** A teammate's SMS check-in simulator had been merged into `main`. Review what landed,
+  confirm it still builds, and repair anything it broke.
+- **Prompt:**
+  > *"Ameena merged her branch - check and tell me what she did."* and then *"ok add all or fix
+  > all."*
+- **Outcome:** Read the whole merge (SMS check-in simulator, a new `needs_help` weight, numeric
+  household sorting, ranking sort / show-all controls) and ran the four gates in a throwaway
+  worktree, which caught a **failing test**: the confidence band compared against `0.4`, but
+  `1 - 3 x 0.2` is `0.3999999999999999` in IEEE-754, so a three-field gap banded Low instead of
+  Medium. Fixed with a tolerance. Also fixed the drift the merge left behind: the maximum score was
+  still described as 50/85 in `AGENTS.md`, `docs/methodology.md` and `prompts/context.md` (now
+  60/95), and every household was flagged "Needs help: Not reported" because the new field is absent
+  from the data in almost every row. Separated the conflated confidence value: it now measures
+  **completeness only**, and an unverified SMS check-in no longer raises it - reports are returned
+  as `unverifiedReportCount` and shown as a separate verification signal. Indexed the new
+  `docs/SMS.md` and added four tests for the SMS scoring. Gates: `tsc`, `oxlint`, `build` and
+  49/49 tests pass. No commit was made.
+
 ---
 
 ## Corrections to earlier drafts
