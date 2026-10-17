@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "seed": 20261017,
+  "bounding_box": {
+    "min_lat": 52.47,
+    "min_lon": -1.92,
+    "max_lat": 52.486,
+    "max_lon": -1.905
+  },
+  "generated_files": [
+    "households.json",
+    "shelters.json",
+    "hospitals.json"
+  ],
+  "notes": [
+    "Synthetic-only demo dataset for flood-response prioritization.",
+    "Contains deliberate missing values and duplicate-like records to stress-test data handling."
+  ]
+}

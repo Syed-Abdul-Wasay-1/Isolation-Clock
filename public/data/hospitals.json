@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "seed": 20261017,
+  "bounding_box": {
+    "min_lat": 52.47,
+    "min_lon": -1.92,
+    "max_lat": 52.486,
+    "max_lon": -1.905
+  },
+  "hospitals": [
+    {
+      "id": "HOSP1",
+      "name": "Riverside General",
+      "lat": 52.484,
+      "lon": -1.9182,
+      "capacity": 220
+    },
+    {
+      "id": "HOSP2",
+      "name": "Parkside Medical Centre",
+      "lat": 52.4728,
+      "lon": -1.907,
+      "capacity": 180
+    }
+  ]
+}

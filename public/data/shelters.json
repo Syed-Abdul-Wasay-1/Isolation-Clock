@@ -1,0 +1,47 @@
+{
+  "synthetic": true,
+  "seed": 20261017,
+  "bounding_box": {
+    "min_lat": 52.47,
+    "min_lon": -1.92,
+    "max_lat": 52.486,
+    "max_lon": -1.905
+  },
+  "shelters": [
+    {
+      "id": "S1",
+      "name": "North Community Centre",
+      "lat": 52.4738,
+      "lon": -1.9196,
+      "capacity": 90
+    },
+    {
+      "id": "S2",
+      "name": "South Market Hall",
+      "lat": 52.4768,
+      "lon": -1.9068,
+      "capacity": 120
+    },
+    {
+      "id": "S3",
+      "name": "East School Hall",
+      "lat": 52.4817,
+      "lon": -1.9125,
+      "capacity": 110
+    },
+    {
+      "id": "S4",
+      "name": "West Civic Hub",
+      "lat": 52.4831,
+      "lon": -1.9185,
+      "capacity": 100
+    },
+    {
+      "id": "S5",
+      "name": "Midtown Shelter",
+      "lat": 52.4794,
+      "lon": -1.9108,
+      "capacity": 130
+    }
+  ]
+}
