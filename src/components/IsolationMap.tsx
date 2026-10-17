@@ -1,8 +1,26 @@
-import { divIcon } from 'leaflet'
-import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet'
-import type { HouseholdScenario } from '../simulation/householdStatus'
+import { useEffect, useMemo } from 'react'
+import { divIcon, latLngBounds } from 'leaflet'
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polyline,
+  Popup,
+  TileLayer,
+  Tooltip,
+  useMap,
+} from 'react-leaflet'
+import { formatEti } from '../simulation/householdStatus'
+import type { HouseholdScenario, HouseholdStatus } from '../simulation/householdStatus'
 import type { ResourceAllocation } from '../simulation/resourceMatching'
 import type { BoundingBox, RoadFeature, SafePlace } from '../types/study'
+
+export interface HouseholdMapAnnotation {
+  /** Rank inside the household's own tab (rescue or evacuate). */
+  rank: number
+  /** Top scoring factors, already turned into short human labels. */
+  reasons: string[]
+}
 
 interface IsolationMapProps {
   boundingBox: BoundingBox
@@ -14,6 +32,7 @@ interface IsolationMapProps {
   selectedHouseholdId: string | null
   onSelectHousehold: (householdId: string) => void
   allocation: ResourceAllocation
+  annotations: Map<string, HouseholdMapAnnotation>
 }
 
 const householdColors = {
@@ -22,6 +41,31 @@ const householdColors = {
   isolated: '#d75b52',
   unknown: '#7b8490',
 } as const
+
+const householdStatusLabels: Record<HouseholdStatus, string> = {
+  safe: 'More than 3 h to isolation',
+  urgent: 'Within 3 h of isolation',
+  isolated: 'Already isolated',
+  unknown: 'Route unknown',
+}
+
+function FitMapToData({ boundingBox }: { boundingBox: BoundingBox }) {
+  const map = useMap()
+  const bounds = useMemo(
+    () =>
+      latLngBounds(
+        [boundingBox.min_lat, boundingBox.min_lon],
+        [boundingBox.max_lat, boundingBox.max_lon],
+      ),
+    [boundingBox],
+  )
+
+  useEffect(() => {
+    map.fitBounds(bounds, { padding: [24, 24] })
+  }, [bounds, map])
+
+  return null
+}
 
 const shelterIcon = divIcon({
   className: 'safe-place-icon shelter-icon',
@@ -50,6 +94,7 @@ export function IsolationMap({
   selectedHouseholdId,
   onSelectHousehold,
   allocation,
+  annotations,
 }: IsolationMapProps) {
   const center: [number, number] = [
     (boundingBox.min_lat + boundingBox.max_lat) / 2,
@@ -70,6 +115,7 @@ export function IsolationMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <FitMapToData boundingBox={boundingBox} />
         {roads.map((road) => (
           <Polyline
             key={road.properties.edge_id}
@@ -118,22 +164,45 @@ export function IsolationMap({
             <Tooltip>{hospital.name || hospital.id} · Hospital</Tooltip>
           </Marker>
         ))}
-        {households.map(({ household, status }) => (
-          <CircleMarker
-            key={household.id}
-            center={[household.lat, household.lon]}
-            radius={selectedHouseholdId === household.id ? 7 : 4}
-            pathOptions={{
-              color: selectedHouseholdId === household.id ? '#152a31' : '#fff',
-              weight: selectedHouseholdId === household.id ? 2 : 1,
-              fillColor: householdColors[status],
-              fillOpacity: 0.92,
-            }}
-            eventHandlers={{ click: () => onSelectHousehold(household.id) }}
-          >
-            <Tooltip>{household.id}</Tooltip>
-          </CircleMarker>
-        ))}
+        {households.map(({ household, status, etiHours }) => {
+          const assignment = allocation.assignments.get(household.id)
+          const annotation = annotations.get(household.id)
+          return (
+            <CircleMarker
+              key={household.id}
+              center={[household.lat, household.lon]}
+              radius={selectedHouseholdId === household.id ? 7 : 4}
+              pathOptions={{
+                color: selectedHouseholdId === household.id ? '#152a31' : '#fff',
+                weight: selectedHouseholdId === household.id ? 2 : 1,
+                fillColor: householdColors[status],
+                fillOpacity: 0.92,
+              }}
+              eventHandlers={{ click: () => onSelectHousehold(household.id) }}
+            >
+              <Popup>
+                <strong>{household.id}</strong>
+                {annotation ? ` · Rank #${annotation.rank}` : ''}
+                <br />
+                {householdStatusLabels[status]}
+                <br />
+                {status === 'isolated' ? 'No route out' : `${formatEti(etiHours)} to isolation`}
+                {assignment ? (
+                  <>
+                    <br />
+                    {assignment.resourceLabel} to {assignment.shelter.name || assignment.shelter.id}
+                  </>
+                ) : null}
+                {annotation && annotation.reasons.length > 0 ? (
+                  <>
+                    <br />
+                    Why: {annotation.reasons.join(' · ')}
+                  </>
+                ) : null}
+              </Popup>
+            </CircleMarker>
+          )
+        })}
       </MapContainer>
       <div className="map-label">
         <span className="map-label-dot" />

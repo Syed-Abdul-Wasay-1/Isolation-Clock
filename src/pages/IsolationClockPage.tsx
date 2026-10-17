@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IsolationMap } from '../components/IsolationMap'
+import type { HouseholdMapAnnotation } from '../components/IsolationMap'
 import { BeforeAfterPanel } from '../components/BeforeAfterPanel'
 import type { PinnedScenarioSnapshot } from '../components/BeforeAfterPanel'
 import { RankingPanel } from '../components/RankingPanel'
@@ -119,6 +120,19 @@ export function IsolationClockPage() {
     ({ scenario }) => scenario.status !== 'isolated',
   )
   const isolatedCount = scenarios.filter((scenario) => scenario.status === 'isolated').length
+  const mapAnnotations = new Map<string, HouseholdMapAnnotation>()
+  for (const [index, { scenario, priority }] of isolatedHouseholds.entries()) {
+    mapAnnotations.set(scenario.household.id, {
+      rank: index + 1,
+      reasons: priority.topFactors.map((factor) => factor.label),
+    })
+  }
+  for (const [index, { scenario, priority }] of evacuateHouseholds.entries()) {
+    mapAnnotations.set(scenario.household.id, {
+      rank: index + 1,
+      reasons: priority.topFactors.map((factor) => factor.label),
+    })
+  }
   const selectedHousehold = rankedHouseholds.find(
     ({ scenario }) => scenario.household.id === selectedHouseholdId,
   )
@@ -222,6 +236,7 @@ export function IsolationClockPage() {
               selectedHouseholdId={selectedHouseholdId}
               onSelectHousehold={setSelectedHouseholdId}
               allocation={allocation}
+              annotations={mapAnnotations}
             />
           </div>
           <div className="map-footnote">

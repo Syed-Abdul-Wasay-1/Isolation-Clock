@@ -3,6 +3,7 @@ import type {
   HouseholdDataset,
   IsolationDataset,
   RoadDataset,
+  SafePlace,
   SafePlaceDataset,
   StudyData,
 } from '../types/study'
@@ -12,12 +13,28 @@ type StudyDataState =
   | { status: 'error'; message: string }
   | { status: 'ready'; data: StudyData }
 
+// Resolve data paths against the deployed base so the app also works when it is
+// hosted under a sub-path (for example a GitHub Pages project site).
+const DATA_BASE = import.meta.env.BASE_URL
+
 async function loadJson<T>(path: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(path, { signal })
+  const response = await fetch(`${DATA_BASE}${path}`, { signal })
   if (!response.ok) {
     throw new Error(`Could not load ${path} (${response.status} ${response.statusText}).`)
   }
   return response.json() as Promise<T>
+}
+
+function isSafePlace(value: unknown): value is SafePlace {
+  if (typeof value !== 'object' || value === null) return false
+  const place = value as Record<string, unknown>
+  return (
+    typeof place.id === 'string' &&
+    typeof place.lat === 'number' &&
+    Number.isFinite(place.lat) &&
+    typeof place.lon === 'number' &&
+    Number.isFinite(place.lon)
+  )
 }
 
 export function useStudyData(): StudyDataState {
@@ -30,17 +47,19 @@ export function useStudyData(): StudyDataState {
       try {
         const [householdData, shelterData, hospitalData, roadData, isolationData] =
           await Promise.all([
-            loadJson<HouseholdDataset>('/data/households.json', controller.signal),
-            loadJson<SafePlaceDataset>('/data/shelters.json', controller.signal),
-            loadJson<SafePlaceDataset>('/data/hospitals.json', controller.signal),
-            loadJson<RoadDataset>('/data/roads.json', controller.signal),
-            loadJson<IsolationDataset>('/data/isolation.json', controller.signal),
+            loadJson<HouseholdDataset>('data/households.json', controller.signal),
+            loadJson<SafePlaceDataset>('data/shelters.json', controller.signal),
+            loadJson<SafePlaceDataset>('data/hospitals.json', controller.signal),
+            loadJson<RoadDataset>('data/roads.json', controller.signal),
+            loadJson<IsolationDataset>('data/isolation.json', controller.signal),
           ])
 
         if (
           !Array.isArray(householdData.households) ||
           !Array.isArray(shelterData.shelters) ||
+          !shelterData.shelters.every(isSafePlace) ||
           !Array.isArray(hospitalData.hospitals) ||
+          !hospitalData.hospitals.every(isSafePlace) ||
           !Array.isArray(roadData.features) ||
           !Array.isArray(isolationData.households) ||
           !Number.isFinite(isolationData.config?.rise_rate_default) ||
