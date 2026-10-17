@@ -246,10 +246,10 @@ npm run dev
 
 | Role | Name |
 |---|---|
-| Lead | _TBD_ |
-| Simulation | _TBD_ |
-| Routing | _TBD_ |
-| Frontend / UX | _TBD_ |
+| Lead | Syed Abdul Wasay |
+| Simulation | Ameena Batool |
+| Routing | Ameena Batool |
+| Frontend / UX | Rabia Chadio |
 
 ## 📄 Documentation Index
 

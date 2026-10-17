@@ -204,6 +204,19 @@ weights, resource rules, UX and the pitch.
   skills under `../.agents/skills/`. The main correction: earlier docs described a Web Worker ETI
   sweep, offline snapshots and a sensitivity band that were **never implemented**.
 
+### 2026-10-17 - Final verification and team roster - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Goal:** Confirm the repo is submission-ready, and record who worked on what.
+- **Prompt:**
+  > *"Check the whole repo end to end - branch, commits, build, lint, prompts, docs - and tell me if
+  > everything is done. Then fill the README Team table from the commit history."*
+- **Outcome:** Verified: `wasay` in sync with `origin/wasay`, clean tree, all commits authored by the
+  team account, `tsc -b` / `oxlint` / `vite build` all pass, and every entry above carries a Model
+  field. Filled the Team table from the commit history - Lead: Syed Abdul Wasay; Simulation and
+  Routing: Ameena Batool; Frontend / UX: Rabia Chadio. Still open at the time of writing: the live
+  deploy link, `docs/architecture.png`, the doc drift listed below, and the demo video.
+
 ---
 
 ## Corrections to earlier drafts

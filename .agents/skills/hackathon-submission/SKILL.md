@@ -60,7 +60,7 @@ The `prompts/prompts.md` "Corrections to earlier drafts" table already records t
 - [ ] `docs/architecture.png` rendered and referenced from the README
 - [ ] Doc drift above resolved
 - [ ] 3-minute demo video recorded
-- [ ] Team names filled in (`README.md` "Team" table is still `_TBD_`)
+- [x] Team names filled in (`README.md` "Team" table)
 - [ ] Submitted before 18 Oct 22:00 PKT
 
 ## Deploy notes
