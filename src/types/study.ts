@@ -13,6 +13,7 @@ export interface Household {
   age_band: string | null
   mobility: string | null
   medical_need: boolean | null
+  needs_help?: boolean | null
   lives_alone: boolean | null
   has_phone: boolean | null
   floor_level: string | null

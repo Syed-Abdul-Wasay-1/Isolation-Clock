@@ -5,6 +5,7 @@ export const PRIORITY_WEIGHTS = {
   livesAlone: 10,
   mobilityLimitation: 12,
   medicalNeed: 10,
+  needsHelp: 10,
   noPhone: 6,
 } as const
 
@@ -93,7 +94,10 @@ function isMissing(value: unknown): boolean {
   return value === null || value === undefined || value === ''
 }
 
-export function getPriorityScore(scenario: HouseholdScenario): PriorityScore {
+export function getPriorityScore(
+  scenario: HouseholdScenario,
+  confidenceBoost = 0,
+): PriorityScore {
   const urgencyPoints = scenario.status === 'isolated'
     ? URGENCY_MAX_POINTS
     : scenario.etiHours === null
@@ -112,6 +116,12 @@ export function getPriorityScore(scenario: HouseholdScenario): PriorityScore {
       points: factor.isVulnerable(scenario) ? factor.weight : 0,
       maxPoints: factor.weight,
     })),
+    {
+      key: 'needsHelp',
+      label: 'Help requested by SMS',
+      points: scenario.household.needs_help === true ? PRIORITY_WEIGHTS.needsHelp : 0,
+      maxPoints: PRIORITY_WEIGHTS.needsHelp,
+    },
   ]
   const total = Math.min(100, Math.max(0, factors.reduce((sum, factor) => sum + factor.points, 0)))
   const missingFields = vulnerabilityFields.filter((factor) =>
@@ -119,16 +129,16 @@ export function getPriorityScore(scenario: HouseholdScenario): PriorityScore {
   )
   const confidenceNotes = missingFields.map((factor) => `${factor.description} — missing`)
   const missingFieldCount = missingFields.length
-  const confidence = Math.max(
+  const confidence = Math.min(1, Math.max(
     0,
-    1 - missingFieldCount * CONFIDENCE_PENALTY_PER_MISSING_FIELD,
-  )
+    1 - missingFieldCount * CONFIDENCE_PENALTY_PER_MISSING_FIELD + confidenceBoost,
+  ))
 
   return {
     total,
     factors,
     confidence,
-    confidenceLevel: missingFieldCount <= 1 ? 'High' : missingFieldCount <= 3 ? 'Medium' : 'Low',
+    confidenceLevel: confidence >= 0.8 ? 'High' : confidence >= 0.4 ? 'Medium' : 'Low',
     confidenceNotes,
     missingFieldCount,
     topFactors: factors

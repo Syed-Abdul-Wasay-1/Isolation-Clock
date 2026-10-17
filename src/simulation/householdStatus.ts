@@ -3,6 +3,12 @@ import { compareHouseholdPriority, getPriorityScore } from './priorityScore'
 
 export type HouseholdStatus = 'safe' | 'urgent' | 'isolated' | 'unknown'
 
+const householdIdCollator = new Intl.Collator(undefined, { numeric: true })
+
+export function compareHouseholdIds(firstId: string, secondId: string): number {
+  return householdIdCollator.compare(firstId, secondId)
+}
+
 export interface HouseholdScenario {
   household: Household
   isolation: IsolationRecord

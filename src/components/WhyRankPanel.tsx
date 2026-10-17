@@ -3,6 +3,7 @@ import { formatEti } from '../simulation/householdStatus'
 import type { PriorityFactor, PriorityScore } from '../simulation/priorityScore'
 import type { SafePlace } from '../types/study'
 import type { ResourceAssignment, UnassignedHousehold } from '../simulation/resourceMatching'
+import type { SmsCheckinRecord } from '../simulation/smsCheckins'
 
 interface WhyRankPanelProps {
   scenario: HouseholdScenario
@@ -13,6 +14,9 @@ interface WhyRankPanelProps {
   riseRateDefault: number
   resourceAssignment: ResourceAssignment | undefined
   unassigned: UnassignedHousehold | undefined
+  smsStatus: 'reported by SMS' | undefined
+  smsReportedFields: Array<'needs_help' | 'medical_need'>
+  smsCheckins: SmsCheckinRecord[]
   onBack: () => void
 }
 
@@ -21,6 +25,7 @@ const vulnerabilityFields = [
   ['age_band', 'Age band'],
   ['mobility', 'Mobility'],
   ['medical_need', 'Medical need'],
+  ['needs_help', 'Needs help'],
   ['lives_alone', 'Lives alone'],
   ['has_phone', 'Has phone'],
   ['floor_level', 'Floor level'],
@@ -44,6 +49,9 @@ export function WhyRankPanel({
   riseRateDefault,
   resourceAssignment,
   unassigned,
+  smsStatus,
+  smsReportedFields,
+  smsCheckins,
   onBack,
 }: WhyRankPanelProps) {
   const { household, isolation } = scenario
@@ -64,6 +72,8 @@ export function WhyRankPanel({
         return 'the resident has a mobility limitation or uses a wheelchair'
       case 'medicalNeed':
         return 'the household has a medical need'
+      case 'needsHelp':
+        return 'the household requested help by SMS (unverified)'
       case 'noPhone':
         return 'the household has no phone'
     }
@@ -100,6 +110,11 @@ export function WhyRankPanel({
                 ? 'More than 3 h'
                 : 'Route unknown'}
         </span>
+        {smsStatus && (
+          <span className="status-pill status-sms">
+            {smsStatus} · unverified
+          </span>
+        )}
       </div>
       <div className="detail-metrics">
         <div>
@@ -144,6 +159,24 @@ export function WhyRankPanel({
           )}
         </div>
       </section>
+      {smsCheckins.length > 0 && (
+        <section className="sms-history" aria-label="SMS check-in history">
+          <h3>SMS check-in</h3>
+          <ol>
+            {smsCheckins.map((checkin) => (
+              <li key={checkin.id}>
+                <div>
+                  <strong>“{checkin.message}”</strong>
+                  <time dateTime={checkin.timestamp}>
+                    {new Date(checkin.timestamp).toLocaleString()}
+                  </time>
+                </div>
+                <p>{checkin.changes}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       <div className="data-quality score-confidence">
         <div className="quality-heading">
           <span className="quality-icon">i</span>
@@ -151,7 +184,7 @@ export function WhyRankPanel({
             Confidence · {priority.confidenceLevel} · {priority.missingFieldCount} of 5 missing
           </strong>
         </div>
-        <p>Confidence depends only on missing vulnerability fields. Missing fields add no vulnerability points.</p>
+        <p>Confidence starts from missing vulnerability fields. Each SMS check-in adds 20 points, capped at High. Missing fields add no vulnerability points.</p>
         {priority.confidenceNotes.length > 0 ? (
           <ul>
             {priority.confidenceNotes.map((note) => <li key={note}>{note}</li>)}
@@ -190,7 +223,11 @@ export function WhyRankPanel({
           {vulnerabilityFields.map(([field, label]) => (
             <div key={field}>
               <dt>{label}</dt>
-              <dd>{displayValue(household[field], field === 'data_completeness')}</dd>
+              <dd>
+                {displayValue(household[field], field === 'data_completeness')}
+                {smsReportedFields.some((reportedField) => reportedField === field) &&
+                  ' · SMS-reported, unverified'}
+              </dd>
             </div>
           ))}
         </dl>

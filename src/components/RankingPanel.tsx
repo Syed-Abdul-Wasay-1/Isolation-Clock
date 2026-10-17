@@ -1,6 +1,12 @@
+import { useState } from 'react'
 import { formatEti } from '../simulation/householdStatus'
+import { compareHouseholdIds } from '../simulation/householdStatus'
 import type { PriorityScore } from '../simulation/priorityScore'
-import { PRIORITY_WEIGHTS, URGENCY_MAX_POINTS } from '../simulation/priorityScore'
+import {
+  compareHouseholdPriority,
+  PRIORITY_WEIGHTS,
+  URGENCY_MAX_POINTS,
+} from '../simulation/priorityScore'
 import type { HouseholdScenario } from '../simulation/householdStatus'
 import type { ResourceAllocation } from '../simulation/resourceMatching'
 
@@ -10,6 +16,7 @@ export interface RankedHousehold {
 }
 
 export type RankingTab = 'rescue' | 'evacuate'
+export type RankingSort = 'priority' | 'id'
 
 interface RankingPanelProps {
   isolatedHouseholds: RankedHousehold[]
@@ -17,10 +24,13 @@ interface RankingPanelProps {
   isolatedCount: number
   totalHouseholds: number
   selectedHouseholdId: string | null
+  priorityRankByHousehold: Map<string, number>
   activeTab: RankingTab
   onTabChange: (tab: RankingTab) => void
   onSelectHousehold: (householdId: string) => void
   allocation: ResourceAllocation
+  sortBy: RankingSort
+  onSortChange: (sortBy: RankingSort) => void
 }
 
 export function RankingPanel({
@@ -29,12 +39,33 @@ export function RankingPanel({
   isolatedCount,
   totalHouseholds,
   selectedHouseholdId,
+  priorityRankByHousehold,
   activeTab,
   onTabChange,
   onSelectHousehold,
   allocation,
+  sortBy,
+  onSortChange,
 }: RankingPanelProps) {
-  const households = activeTab === 'rescue' ? isolatedHouseholds : evacuateHouseholds
+  const [showAll, setShowAll] = useState(false)
+  const households = [...(activeTab === 'rescue' ? isolatedHouseholds : evacuateHouseholds)]
+  households.sort((first, second) => {
+    switch (sortBy) {
+      case 'id':
+        return compareHouseholdIds(
+          first.scenario.household.id,
+          second.scenario.household.id,
+        )
+      case 'priority':
+        return compareHouseholdPriority(
+          first.scenario,
+          first.priority,
+          second.scenario,
+          second.priority,
+        )
+    }
+  })
+  const visibleHouseholds = households.slice(0, 20)
 
   return (
     <section className="ranking-section" aria-labelledby="ranking-title">
@@ -74,9 +105,36 @@ export function RankingPanel({
       </div>
       <p className="section-intro">
         {activeTab === 'rescue'
-          ? 'Households already isolated at this scenario level, ranked by priority score.'
-          : 'Households not yet isolated, ranked by priority score.'}
+          ? 'Households already isolated at this scenario level.'
+          : 'Households not yet isolated.'}
       </p>
+      <div className="ranking-list-controls">
+        <label>
+          Sort by
+          <select
+            aria-label="Sort households by"
+            value={sortBy}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              if (value === 'priority' || value === 'id') {
+                onSortChange(value)
+              }
+            }}
+          >
+            <option value="priority">Priority rank</option>
+            <option value="id">Household number</option>
+          </select>
+        </label>
+        {households.length > 20 && (
+          <button
+            className="show-all-button"
+            type="button"
+            onClick={() => setShowAll((current) => !current)}
+          >
+            {showAll ? 'Show top 20' : 'Show all'}
+          </button>
+        )}
+      </div>
       <div className="ranking-list" id="ranking-list" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
         {households.length === 0 ? (
           <div className="empty-state">
@@ -88,14 +146,18 @@ export function RankingPanel({
             </strong>
             <span>Adjust the scenario level to explore other conditions.</span>
           </div>
-        ) : households.map(({ scenario, priority }, index) => (
+        ) : (showAll ? households : visibleHouseholds).map(({ scenario, priority }) => (
           <button
             key={scenario.household.id}
             className={`ranking-row${selectedHouseholdId === scenario.household.id ? ' is-selected' : ''}`}
             type="button"
             onClick={() => onSelectHousehold(scenario.household.id)}
           >
-            <span className="rank-number">{String(index + 1).padStart(2, '0')}</span>
+            <span className="rank-number">
+              {priorityRankByHousehold.has(scenario.household.id)
+                ? String(priorityRankByHousehold.get(scenario.household.id)).padStart(2, '0')
+                : '–'}
+            </span>
             <span className={`status-dot status-${scenario.status}`} />
             <span className="rank-main">
               <span className="rank-id">{scenario.household.id}</span>
@@ -123,15 +185,16 @@ export function RankingPanel({
       </div>
       <details className="score-explainer">
         <summary>How the score works</summary>
-        <p>Urgency contributes up to {URGENCY_MAX_POINTS} points; vulnerability contributes up to 50 points:</p>
+        <p>Urgency contributes up to {URGENCY_MAX_POINTS} points; recorded vulnerabilities contribute up to 60 points:</p>
         <ul>
           <li>Age 65+: {PRIORITY_WEIGHTS.age65Plus}</li>
           <li>Lives alone: {PRIORITY_WEIGHTS.livesAlone}</li>
           <li>Mobility limitation or wheelchair: {PRIORITY_WEIGHTS.mobilityLimitation}</li>
           <li>Medical need: {PRIORITY_WEIGHTS.medicalNeed}</li>
+          <li>Help requested by SMS: {PRIORITY_WEIGHTS.needsHelp}</li>
           <li>No phone: {PRIORITY_WEIGHTS.noPhone}</li>
         </ul>
-        <p>Weights are illustrative, not validated. Missing fields lower confidence only; they add no vulnerability points.</p>
+        <p>Weights are illustrative, not validated. Missing fields lower confidence only; they add no vulnerability points. SMS help requests are unverified.</p>
       </details>
     </section>
   )
