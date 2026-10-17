@@ -22,6 +22,6 @@ drainage and rainfall data that this study does not have. The result is useful f
 scenarios, but it is not a statement of actual flood depth, a validated risk estimate, or a
 forecast.
 
-The `config.rise_rate_default` value in `public/data/isolation.json` is an example scenario
-setting in metres per hour (`0.02` m/hour). It is not inferred from local rainfall or
+The `config.rise_rate_default` value in `public/data/isolation.json` is **10 index points per
+hour (illustrative scenario setting)**. It is not inferred from local rainfall or
 hydrological measurements and must not be interpreted as a predicted rate of rise.

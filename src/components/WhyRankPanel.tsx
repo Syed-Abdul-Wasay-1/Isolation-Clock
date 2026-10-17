@@ -1,0 +1,136 @@
+import type { HouseholdScenario } from '../simulation/householdStatus'
+import { formatEti } from '../simulation/householdStatus'
+import type { SafePlace } from '../types/study'
+
+interface WhyRankPanelProps {
+  scenario: HouseholdScenario
+  safePlaces: SafePlace[]
+  scenarioLevel: number
+  riseRateDefault: number
+  onBack: () => void
+}
+
+const vulnerabilityFields = [
+  ['household_size', 'Household size'],
+  ['age_band', 'Age band'],
+  ['mobility', 'Mobility'],
+  ['medical_need', 'Medical need'],
+  ['lives_alone', 'Lives alone'],
+  ['has_phone', 'Has phone'],
+  ['floor_level', 'Floor level'],
+  ['last_contact_hours', 'Hours since contact'],
+  ['data_completeness', 'Data completeness'],
+] as const
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return 'Not reported'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'number') {
+    return value <= 1 && value >= 0 ? `${Math.round(value * 100)}%` : String(value)
+  }
+  return String(value)
+}
+
+export function WhyRankPanel({
+  scenario,
+  safePlaces,
+  scenarioLevel,
+  riseRateDefault,
+  onBack,
+}: WhyRankPanelProps) {
+  const { household, isolation } = scenario
+  const safePlace = safePlaces.find((place) => place.id === isolation.nearest_safe_place_id)
+  const missingFields = vulnerabilityFields
+    .filter(([field]) => household[field] === null || household[field] === undefined)
+    .map(([, label]) => label)
+
+  return (
+    <section className="why-panel" aria-labelledby="why-title">
+      <button className="back-button" type="button" onClick={onBack}>
+        <span aria-hidden="true">←</span> Back to ranking
+      </button>
+      <div className="why-header">
+        <div className="eyebrow">HOUSEHOLD DETAIL</div>
+        <h2 id="why-title">{household.id}</h2>
+        <span className={`detail-status status-pill status-${scenario.status}`}>
+          {scenario.status === 'isolated'
+            ? 'Isolated'
+            : scenario.status === 'urgent'
+              ? 'Urgent · within 3 h'
+              : scenario.status === 'safe'
+                ? 'More than 3 h'
+                : 'Route unknown'}
+        </span>
+      </div>
+      <div className="detail-metrics">
+        <div>
+          <span>Estimated time to isolation</span>
+          <strong>{formatEti(scenario.etiHours)}</strong>
+        </div>
+        <div>
+          <span>Isolation level</span>
+          <strong>
+            {isolation.isolation_level === null
+              ? 'Unknown'
+              : isolation.isolation_level.toFixed(1)}
+          </strong>
+        </div>
+      </div>
+      <div className="detail-route">
+        <div className="eyebrow">BEST MODELLED ROUTE</div>
+        <div className="route-item">
+          <span className="route-icon route-road">↗</span>
+          <span>
+            <small>Bottleneck road</small>
+            <strong>{isolation.bottleneck_road || 'Not available'}</strong>
+          </span>
+        </div>
+        <div className="route-item">
+          <span className="route-icon route-safe">＋</span>
+          <span>
+            <small>Nearest safe place</small>
+            <strong>
+              {safePlace
+                ? `${safePlace.name || safePlace.id} · ${safePlace.id}`
+                : isolation.nearest_safe_place_id || 'Not available'}
+            </strong>
+          </span>
+        </div>
+      </div>
+      <div className="vulnerability-section">
+        <div className="detail-section-title">
+          <div>
+            <div className="eyebrow">HOUSEHOLD PROFILE</div>
+            <h3>Vulnerability information</h3>
+          </div>
+        </div>
+        <dl className="vulnerability-grid">
+          {vulnerabilityFields.map(([field, label]) => (
+            <div key={field}>
+              <dt>{label}</dt>
+              <dd>{displayValue(household[field])}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="data-quality">
+        <div className="quality-heading">
+          <span className="quality-icon">i</span>
+          <strong>Data quality &amp; assumptions</strong>
+        </div>
+        <p>
+          All household fields are synthetic and unverified; data completeness is not an
+          independent verification score. ETI is calculated in-browser as
+          max(0, (isolation level − scenario level) ÷{' '}
+          {riseRateDefault.toFixed(2)}).
+        </p>
+        <p>
+          Current scenario: <strong>{scenarioLevel}</strong> relative index.
+        </p>
+        <p>
+          Missing or unreported: <strong>{missingFields.length ? missingFields.join(', ') : 'None'}</strong>
+        </p>
+      </div>
+    </section>
+  )
+}

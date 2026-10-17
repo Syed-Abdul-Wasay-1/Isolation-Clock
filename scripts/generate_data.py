@@ -445,8 +445,17 @@ def generate_hospitals() -> List[Dict[str, Any]]:
 
 
 def write_json(path: Path, payload: Dict[str, Any]) -> None:
+    def replace_non_finite(value: Any) -> Any:
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if isinstance(value, dict):
+            return {key: replace_non_finite(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [replace_non_finite(item) for item in value]
+        return value
+
     with path.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2)
+        json.dump(replace_non_finite(payload), handle, indent=2, allow_nan=False)
         handle.write("\n")
 
 

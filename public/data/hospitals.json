@@ -17,7 +17,7 @@
     },
     {
       "id": "HOSP2",
-      "name": NaN,
+      "name": null,
       "lat": 27.702942,
       "lon": 68.843892,
       "capacity": 260

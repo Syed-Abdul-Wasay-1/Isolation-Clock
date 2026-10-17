@@ -24,7 +24,7 @@
     },
     {
       "id": "S3",
-      "name": NaN,
+      "name": null,
       "lat": 27.697293,
       "lon": 68.853098,
       "capacity": 155

@@ -31,7 +31,7 @@ ELEVATION_URL = "https://api.opentopodata.org/v1/srtm30m"
 OSM_MAP_URL = "https://api.openstreetmap.org/api/0.6/map"
 BATCH_SIZE = 100
 BATCH_DELAY_SECONDS = 1
-RISE_RATE_DEFAULT = 0.02
+RISE_RATE_DEFAULT = 10.0
 ox.settings.requests_timeout = 45
 
 
