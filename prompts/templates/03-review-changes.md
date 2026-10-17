@@ -43,8 +43,8 @@ conflict lists). Distrust a review that:
 - Links to files it never confirmed exist on the current branch. Branches created before a rename,
   folder move or study-area switch often reference paths that no longer exist.
 - Invents a reason for a design choice ("this avoids janky re-renders") without pointing at code.
-- Describes capabilities (a Web Worker, offline snapshots, a sensitivity band) that are only in the
-  docs and not in `src/`.
+- Describes capabilities that are only in the docs and not in `src/` — check the code before trusting
+  any claim, especially around workers, offline mode or uncertainty bands.
 
 ## Then
 

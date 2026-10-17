@@ -35,14 +35,18 @@ RULES
 
 ## Status of the docs today
 
-Everything under `docs/` is trustworthy for **concepts and intent**, but `architecture.md`,
-`assumptions.md`, `risks.md` and `tradeoffs.md` still describe some features that were never built
-(a Web Worker, offline snapshots, a sensitivity band) and a road-depth tolerance that does not exist.
-`docs/SIMULATION.md`, `docs/SCORING.md` and `docs/ALLOCATION.md` match the shipped code.
+The drift was **fixed** (commit range on `wasay`): `architecture.md`, `assumptions.md`, `risks.md`,
+`tradeoffs.md` and `methodology.md` no longer claim a Web Worker, offline snapshots, a sensitivity
+band or a road-depth tolerance. They now describe only what ships:
 
-If you want a clean submission, either build those features or edit those four files. The
-"Corrections to earlier drafts" table in [`../prompts.md`](../prompts.md) already records the
-mismatches, so nothing is hidden - but a judge reading `architecture.md` will still expect a worker.
+- No Web Worker — the graph work is precomputed in Python; the browser does per-household arithmetic.
+- No offline snapshots or service worker — the app loads five static JSON files and is online-only.
+- No sensitivity band — confidence is reported per household, but there is no ±margin re-run.
+- No depth tolerance — road closure is a threshold on a 0–100 relative exposure index.
+
+`docs/SIMULATION.md`, `docs/SCORING.md`, `docs/ALLOCATION.md`, `docs/DATA.md` and `README.md` match the
+shipped code. The "Corrections to earlier drafts" table in [`../prompts.md`](../prompts.md) records
+what the earlier drafts got wrong, on purpose.
 
 ## Final pre-submission checklist
 

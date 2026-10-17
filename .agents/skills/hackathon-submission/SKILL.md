@@ -33,21 +33,24 @@ project's stated framing must stay consistent everywhere:
 - Household details are **synthetic**; buildings, roads and amenities are real OSM data.
 - The scenario level is a **relative index, not water depth**.
 
-## Known doc drift - fix or own it
+## Doc truthfulness - verified, keep it that way
 
-These files describe features that were **never implemented**. Either build them or edit them before
-submitting, otherwise a judge reading `docs/architecture.md` will expect a worker that does not exist:
+These docs used to describe features that were **never implemented**. That drift was fixed; the docs
+now match the code. Keep it that way - a judge reading `docs/architecture.md` should never expect a
+worker that does not exist.
 
-| Doc | Claim | Reality |
-|---|---|---|
-| `docs/architecture.md` | ETI sweep runs in a **Web Worker** | No worker; `src/workers/` is empty. |
-| `docs/architecture.md`, `docs/assumptions.md`, `docs/risks.md`, `docs/tradeoffs.md` | **Offline snapshots** at +10/+20/+30 | Not built; the app recomputes in the browser. |
-| `docs/methodology.md`, `docs/risks.md` | **Sensitivity band** / fragile flag | Not built; only confidence is shown. |
-| `docs/assumptions.md` | Road **tolerance ~0.30 m** | No depth tolerance; thresholds are a 0-100 percentile. |
-| `README.md` / `docs/*` | "We do not assign vehicles" | `resourceMatching.ts` suggests boats/vehicles/beds (greedy, not dispatch). |
+| Doc claim that would be wrong | Actual fact |
+|---|---|
+| A **Web Worker** runs the ETI sweep | No worker; `src/workers/` holds only `.gitkeep`. The graph work is precomputed in Python; the browser does per-household arithmetic on the main thread. |
+| **Offline snapshots** at +10/+20/+30 | Not built. The app loads five static JSON files and is online-only (no service worker). |
+| A **sensitivity band** / fragile flag | Not built. Only the confidence value is shown. |
+| Road **tolerance ~0.30 m** | No depth tolerance. Closure is a threshold on a 0–100 relative exposure percentile index. |
+| "We do not assign vehicles" | Outdated. `resourceMatching.ts` makes a greedy boat/vehicle/bed suggestion; it is explicitly *not* dispatch. |
 
-`docs/SIMULATION.md`, `docs/SCORING.md`, `docs/ALLOCATION.md` and `docs/DATA.md` match the code.
-The `prompts/prompts.md` "Corrections to earlier drafts" table already records these mismatches.
+`docs/SIMULATION.md`, `docs/SCORING.md`, `docs/ALLOCATION.md`, `docs/DATA.md`, `docs/methodology.md`,
+`docs/architecture.md`, `docs/assumptions.md`, `docs/risks.md`, `docs/tradeoffs.md` and `README.md`
+all match the shipped code. The `prompts/prompts.md` "Corrections to earlier drafts" table keeps the
+history of these mistakes on purpose.
 
 ## Pre-submission checklist
 

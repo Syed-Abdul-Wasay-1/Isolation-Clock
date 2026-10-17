@@ -1,6 +1,11 @@
 # Idea — Isolation Clock
 
 > Original concept note. The product idea and the nine points behind it, as first written.
+>
+> **Note (post-build):** this is the unfiltered idea. Two points below — the *sensitivity band*
+> (point 5) and the *precomputed offline snapshots* (point 6) — were **not built**; see the
+> "Corrections to earlier drafts" table in [`../prompts/prompts.md`](../prompts/prompts.md) and the
+> shipped design in [`architecture.md`](architecture.md).
 
 1. Isolation Clock (core)
 Pitch: instead of asking who is flooded, ask who is about to be cut off, and how many hours they

@@ -21,10 +21,10 @@ data/ (raw inputs)  ──►  scripts/ (run once, offline)  ──►  public/d
 
 | Dataset | What it is |
 |---|---|
-| **Households** | One entry per synthetic household: a location plus vulnerability attributes (age, disability, lives alone, smartphone access, income band). |
-| **Destinations** | Shelters and hospitals with a location, type, capacity and an open/closed flag. |
-| **Road graph** | The routable road network for the study area, with ground elevation per segment. Built from OpenStreetMap where available, with a synthetic grid fallback. |
-| **Offline snapshots** | Precomputed priority rankings at fixed water levels (+10/+20/+30 cm) so field devices work with no connectivity. |
+| **Households** | One entry per synthetic household: a location plus vulnerability attributes (age band, mobility, lives alone, medical need, phone access, household size). |
+| **Shelters & hospitals** | Destination points with a location, a name and a bed/patient capacity. |
+| **Road network** | The study-area road network as GeoJSON, with a per-edge scenario threshold derived from node exposure. Built from OpenStreetMap; a synthetic grid is used only if the OSM query returns too few roads. |
+| **Isolation levels** | Per household: the widest-path level at which its last route to a safe place closes, plus the safe place and bottleneck road for that route. |
 
 ## How the synthetic data is generated
 
@@ -32,9 +32,9 @@ data/ (raw inputs)  ──►  scripts/ (run once, offline)  ──►  public/d
   locally matches the demo in the README.
 - **Plausible distributions.** Household attributes are sampled to resemble a flood-prone,
   low-income urban area — but the individuals are invented, not real.
-- **Deliberately imperfect.** A share of households is missing elevation and a share of roads is
-  missing, so the fallback and low-confidence behaviour is exercised by default. This is intended:
-  the hackathon asks how the system behaves when data is incomplete.
+- **Deliberately imperfect.** About 15% of household records have a blank field, so the
+  confidence/missing-data behaviour is exercised by default. This is intended: the hackathon asks how
+  the system behaves when data is incomplete.
 
 Column-level detail for each dataset is added alongside the data as it is built.
 

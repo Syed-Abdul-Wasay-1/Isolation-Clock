@@ -10,13 +10,13 @@ data/ (raw inputs)  ──►  scripts/ (run once, locally)  ──►  public/d
 
 ## What belongs here
 
-| Step | Purpose |
-|---|---|
-| **Fetch / load** | Pull or read the OpenStreetMap extract and elevation data for the study area. |
-| **Build the road graph** | Reduce roads to a routable network and attach a ground elevation to each segment. |
-| **Generate the population** | Create the synthetic households and destinations from a fixed seed. |
-| **Emit JSON** | Write the compact, rounded files into `public/data/`, plus a `meta.json` stamp. |
-| **Precompute snapshots** | Produce the offline rankings at fixed water levels. |
+| Step | Purpose | Implemented in |
+|---|---|---|
+| **Fetch / load** | Pull or read the OpenStreetMap extract and elevation data for the study area. | `generate_data.py`, `build_isolation_clock.py` |
+| **Generate the population** | Create the synthetic households and destination points from a fixed seed. | `generate_data.py` |
+| **Build the road network** | Reduce roads to the study-area network and score each node's exposure. | `build_isolation_clock.py` |
+| **Compute isolation levels** | Run the reverse widest-path search from every shelter and hospital. | `build_isolation_clock.py` |
+| **Emit JSON** | Write the compact, rounded files into `public/data/`, plus a `meta.json` stamp. | both scripts |
 
 ## Why offline
 
@@ -30,5 +30,6 @@ and means the data is reproducible from a seed rather than fetched live.
 - **Always reproducible.** Same seed ⇒ same output.
 - **Write only to `public/data/`.** Keep the generated files small and committed.
 
-> The implementation of these scripts is added when the app is scaffolded; this folder currently
-> documents the intended pipeline.
+> Two scripts implement this pipeline: `generate_data.py` (households, shelters, hospitals) and
+> `build_isolation_clock.py` (road network, exposure thresholds and isolation levels). See
+> [`../docs/DATA.md`](../docs/DATA.md) for the field-level reference.

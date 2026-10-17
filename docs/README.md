@@ -8,7 +8,11 @@ material we were given.
 | Doc | What's inside |
 |---|---|
 | [`architecture.md`](architecture.md) | Client-side system design, components and data flow |
-| [`methodology.md`](methodology.md) | ETI definition, water model, ranking formula |
+| [`methodology.md`](methodology.md) | ETI definition, exposure index, ranking formula |
+| [`SIMULATION.md`](SIMULATION.md) | What the 0–100 road thresholds mean and do not mean |
+| [`SCORING.md`](SCORING.md) | Priority score and confidence formula |
+| [`ALLOCATION.md`](ALLOCATION.md) | Boat / vehicle / bed assignment rules |
+| [`DATA.md`](DATA.md) | Field-level reference for the generated data |
 | [`assumptions.md`](assumptions.md) | Every assumption we made, stated plainly |
 | [`risks.md`](risks.md) | Model, data, runtime, platform and UX risks + mitigations |
 | [`tradeoffs.md`](tradeoffs.md) | What we built, what we cut, and why |

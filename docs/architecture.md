@@ -7,13 +7,15 @@
 The only hosting available is static (**Vercel / Netlify**), and in a flood the network can be gone
 anyway. So the app is built to run **entirely in the browser**:
 
-- All logic — the water model and the time-to-isolation calculation — is **TypeScript** running on
-  the client.
-- All data is **precomputed JSON** shipped as static assets, fetched once at load.
-- Heavy graph math runs in a **Web Worker** so the UI stays smooth.
-- Once loaded, it **works offline** — which is the real field condition.
+- All the geospatial graph work — building the road network, exposure scoring and the widest-path
+  search — is **precomputed offline** by Python scripts in `scripts/`.
+- The result ships as **precomputed JSON** in `public/data/`, fetched once at load.
+- At runtime the browser only does cheap arithmetic per household: convert a precomputed
+  `isolation_level` into an Estimated Time to Isolation (ETI), score it, and greedily match
+  resources. There is **no Web Worker** — the dataset is small (400 households, ~5 k road features)
+  and this step runs in a few milliseconds on the main thread.
 
-Nothing needs a backend at request time. The only "backend-ish" work is a run-once, offline data
+Nothing needs a backend at request time. The only "backend-ish" work is the run-once, offline data
 preparation step under `scripts/`.
 
 ## High-level diagram
@@ -23,35 +25,38 @@ preparation step under `scripts/`.
                                                               │
   OpenStreetMap ─┐                                            │
   Elevation data ─┼─►  scripts/  ─►  public/data/*.json        │
-  Synthetic pop. ─┘   (prepare)      (households, graph,       │
-                                      destinations, snapshots) │
+  Synthetic pop. ─┘   (Python)       (households, shelters,    │
+                                      hospitals, roads,        │
+                                      isolation)               │
                                                               │
   ────────────────────────────────────────────────────────────┼──────────────────────────────
                                                               │
                                                               ▼
                                           ┌────────────────────────────────────┐
                                           │  App shell (Vite + React + TS)     │
-                                          │  map · water-level slider · list   │
+                                          │  map · scenario slider · panels    │
                                           └───────────────┬────────────────────┘
-                                                          │ messages
+                                                          │ in-process calls
                                                           ▼
                                           ┌────────────────────────────────────┐
-                                          │  Web Worker                        │
+                                          │  src/simulation/                    │
                                           │  ┌──────────────┐ ┌─────────────┐  │
-                                          │  │ Simulation   │ │ Routing     │  │
-                                          │  │ water level  │→│ graph paths │  │
-                                          │  │ over time    │ │ + ETI       │  │
+                                          │  │ household    │ │ priority    │  │
+                                          │  │ status (ETI) │→│ score       │  │
                                           │  └──────────────┘ └─────────────┘  │
+                                          │  ┌──────────────────────────────┐  │
+                                          │  │ resourceMatching (greedy)    │  │
+                                          │  └──────────────────────────────┘  │
                                           └───────────────┬────────────────────┘
                                                           │ results (per household)
                                                           ▼
                                           ┌────────────────────────────────────┐
-                                          │  Ranking                           │
-                                          │  vulnerability × urgency + band    │
+                                          │  Ranking  +  Why-rank  +  Alloc    │
+                                          │  vulnerability + urgency → score   │
                                           └───────────────┬────────────────────┘
                                                           ▼
                                           ┌────────────────────────────────────┐
-                                          │  UI updates: roads turn blue,      │
+                                          │  UI updates: roads recolour,        │
                                           │  households flip to countdowns,     │
                                           │  priority list re-sorts live        │
                                           └────────────────────────────────────┘
@@ -63,36 +68,47 @@ preparation step under `scripts/`.
 
 | Component | Lives in | Responsibility |
 |---|---|---|
-| **Offline data prep** | `scripts/` | Run-once conversion of OSM/elevation/synthetic data into compact JSON. Not deployed. |
-| **Static data** | `public/data/` | The JSON the browser fetches: households, road graph, destinations, offline snapshots. |
-| **App shell / UI** | `src/components/`, `src/pages/` | The coordinator-facing interface: map, water-level slider, priority list, badges. |
-| **State wiring** | `src/hooks/` | React hooks that feed slider/scenario changes to the worker and results back to the UI. |
-| **Simulation** | `src/simulation/` | The water model: level over time and which road segments are submerged. |
-| **Routing + ETI** | `src/routing/` | Graph search to shelters/hospitals and the time-to-isolation calculation. |
-| **Worker** | `src/workers/` | Runs the simulation + routing sweep off the main thread. |
-| **Shared types** | `src/types/` | TypeScript contracts for households, edges, snapshots and results. |
+| **Offline data prep** | `scripts/` | Run-once Python conversion of OSM/elevation/synthetic data into compact JSON, including the widest-path isolation levels. Not deployed. |
+| **Static data** | `public/data/` | The JSON the browser fetches: `households.json`, `shelters.json`, `hospitals.json`, `roads.json`, `isolation.json`. |
+| **Data loading** | `src/hooks/useStudyData.ts` | Fetches the JSON, validates its structure, and builds the `isolationByHousehold` lookup and `riseRateDefault`. |
+| **Simulation** | `src/simulation/householdStatus.ts` | Turns a household's `isolation_level` and the current scenario level into ETI (hours) and a status (`safe` / `urgent` / `isolated` / `unknown`). |
+| **Scoring** | `src/simulation/priorityScore.ts` | Blends urgency and vulnerability into the explainable priority score, plus a separate confidence value. |
+| **Allocation** | `src/simulation/resourceMatching.ts` | Greedy priority-first assignment of boats, vehicles and shelter beds; records why a household was not assigned. |
+| **Map** | `src/components/IsolationMap.tsx` | Leaflet map of roads and households, road recolouring by scenario level, popups and `fitBounds`. |
+| **Ranking UI** | `src/components/RankingPanel.tsx`, `WhyRankPanel.tsx` | The priority list and the per-household explanation. |
+| **Allocation UI** | `src/components/ResourceAllocationPanel.tsx` | Boats/vehicles used and beds consumed per shelter. |
+| **Before/after** | `src/components/BeforeAfterPanel.tsx` | Pins a moment and compares it with another (rank shifts, newly isolated, assignment changes). |
+| **Page + state** | `src/pages/IsolationClockPage.tsx` | Holds the scenario level, playback and pinning state; wires data to components. |
+| **Shared types** | `src/types/study.ts` | TypeScript contracts for households, safe places, roads and isolation records. |
 | **Docs** | `docs/` | Architecture, assumptions, methodology, risks, trade-offs. |
 | **Prompts** | `prompts/` | The AI prompt log required for this Vibe Coding hackathon. |
 
+> **Reserved, unused folders.** `src/workers/` and `src/routing/` exist only as empty placeholders
+> (`.gitkeep`) from the original scaffold plan. There is no worker and no in-browser routing module;
+> both responsibilities were moved offline into `scripts/`.
+
 ## Runtime data flow (one interaction)
 
-1. App loads, fetches `public/data/*.json` once, and hands the graph to the worker.
-2. Coordinator drags the **water-level slider** (or picks a scenario).
-3. The **worker** runs the water model and the ETI sweep for the new level.
-4. Results travel back to the main thread as a compact list of household outcomes.
-5. The **UI** recolours submerged roads, flips households to countdowns, and re-sorts the priority
-   list — live.
+1. App loads and fetches `public/data/*.json` once via `useStudyData`, validating the structure and
+   building the isolation lookup.
+2. Coordinator drags the **scenario-level slider** (0–100) or presses play.
+3. For every household, `getHouseholdScenario` computes `ETI = max(0, (isolation_level −
+   scenarioLevel) / riseRate)` and derives its status.
+4. `priorityScore` scores and orders the households; `resourceMatching` greedily assigns boats,
+   vehicles and shelter beds.
+5. The **UI** recolours roads, updates the priority list and map popups, and re-renders — all
+   synchronously, with no message passing.
 
 ## Design principles
 
 - **No server.** If it needs a backend, it doesn't ship. Computation is client-side, data is static.
-- **Config-driven.** Study area, tolerances, weights and the assumed water curve are tunable in one
-  place — no magic numbers buried in components.
-- **Graceful degradation.** Missing elevation → neighbourhood average + low-confidence badge.
-  No route → an explicit message, never an invented one.
-- **Honesty over polish.** Every countdown travels with a confidence band. A *scenario simulator*,
-  not a forecast.
-- **Offline-first.** Precomputed snapshots mean the field device works with no signal.
+- **Precompute the heavy part.** Graph work runs once in Python so the browser stays instant; the
+  client only does arithmetic on already-computed isolation levels.
+- **Explainable.** Every ranked row names its reason — the safe place, the bottleneck road, the
+  contributing vulnerability factors.
+- **Graceful degradation.** Missing isolation data → an explicit `unknown` status. Missing shelter
+  capacity or household size → a documented default, clearly flagged, never silent.
+- **Honesty over polish.** A *scenario simulator*, not a forecast; confidence is always shown.
 
 ## What we deliberately have no room for
 
@@ -100,11 +116,16 @@ preparation step under `scripts/`.
 |---|---|
 | Backend API / server | Hosting is static-only; also a liability when the network dies. |
 | Database | Data is precomputed and shipped; nothing to query at runtime. |
+| Web Worker | The runtime computation is trivial once isolation levels are precomputed; a worker would add complexity for no measurable gain. |
+| Offline snapshot files | With no service worker, an offline mode would need extra build tooling; the app is designed to be served statically and cached by the browser. |
 | Live OSM queries in the app | Would need a network and be slow; preprocessing happens offline. |
 | User accounts / saved sessions | Out of scope for the MVP. |
 
 ## See also
 
-- [`methodology.md`](methodology.md) — how ETI and the ranking are actually defined
+- [`SIMULATION.md`](SIMULATION.md) — what the road thresholds mean and what they do not
+- [`SCORING.md`](SCORING.md) — the priority score and confidence formula
+- [`ALLOCATION.md`](ALLOCATION.md) — how boats, vehicles and beds are assigned
+- [`methodology.md`](methodology.md) — how ETI and the ranking are defined
 - [`assumptions.md`](assumptions.md) — the assumptions behind every layer above
 - [`tradeoffs.md`](tradeoffs.md) — what we deliberately left out

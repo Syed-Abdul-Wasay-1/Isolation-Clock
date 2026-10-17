@@ -12,6 +12,10 @@
 | [`context.md`](context.md) | A copy-paste primer that gives any AI the project context in one message. | Optional, recommended. |
 | [`templates/`](templates/) | Reusable prompt templates for the work we actually do on this repo. | Optional. |
 
+> The repo root also has [`../AGENTS.md`](../AGENTS.md): persistent instructions an AI coding agent
+> reads automatically at the start of every session. `context.md` is the copy-paste version for chat
+> tools that do not support agent instruction files.
+
 The hackathon only requires the log. `context.md` and `templates/` exist so the log stays easy to
 keep accurate: instead of improvising, we start from a template and paste the result into
 `prompts.md`.

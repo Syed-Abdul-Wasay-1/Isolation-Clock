@@ -217,6 +217,24 @@ weights, resource rules, UX and the pitch.
   Routing: Ameena Batool; Frontend / UX: Rabia Chadio. Still open at the time of writing: the live
   deploy link, `docs/architecture.png`, the doc drift listed below, and the demo video.
 
+### 2026-10-17 - Fix doc drift and add AGENTS.md agent instructions - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Goal:** Make the docs describe only what ships, and give an AI agent persistent instructions it
+  reads before every task.
+- **Prompt:**
+  > *"Fix the doc drift in architecture.md, assumptions.md, risks.md, tradeoffs.md and methodology.md,
+  > and add a file an agent always reads before it starts - containing everything an agent has to do."*
+- **Outcome:** Removed every claim of a Web Worker, offline snapshots, a sensitivity band and a
+  0.30 m road tolerance from `architecture.md`, `assumptions.md`, `risks.md`, `tradeoffs.md`,
+  `methodology.md`, `README.md`, `data/README.md`, `public/data/README.md` and `scripts/README.md`;
+  they now describe the shipped system (Python precompute + client-side ETI, relative 0-100 index).
+  Added `AGENTS.md` at the repo root - the file OpenCode loads automatically before a prompt - with
+  the project summary, golden rules, read order, commands, model invariants, prompt-log etiquette,
+  skills, conventions, submission constraints and the definition of done. Also corrected the wrong
+  file names in `public/data/README.md` and refreshed the hackathon-submission skill so it no longer
+  reports the drift as open.
+
 ---
 
 ## Corrections to earlier drafts
