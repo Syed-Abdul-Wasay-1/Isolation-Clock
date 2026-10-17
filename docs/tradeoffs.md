@@ -73,10 +73,11 @@
 - There is no explicit offline mode (no service worker or precomputed snapshot tier).
 - **The app cannot re-route.** Because only thresholds are shipped, not the road graph, a reported
   road closure can only ever be an impact preview against the precomputed bottleneck road.
-- **112 of the 400 shipped households record their bottleneck road as an OpenStreetMap street name,
-  not an edge id**, so those roads are listed but cannot be located on the map. A regeneration of the
-  offline pipeline with `bottleneck_road` normalised to edge ids (and the street name kept in a
-  separate field) would fix this; the pipeline has been changed, the data has not been regenerated.
+- **Bottleneck roads are grouped by OSM edge, not by street name.** A named street can therefore
+  appear as more than one row — Cinema Road's 46 households fall across three segments, which close at
+  levels 39.1, 42.9 and 44.2. Street-level aggregation was rejected because the threshold, the map
+  highlight and the *"if this road fails"* question are all defined per edge: rolling three closing
+  levels into one row would have to print a range instead of a number.
 - The playback frame cost was reduced structurally and measured in Node, but the browser frame
   timings could not be captured in the environment this was built in. The numbers to reproduce are in
   the T8 task entry.

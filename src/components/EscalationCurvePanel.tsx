@@ -30,7 +30,7 @@ export function EscalationCurvePanel({
         </div>
       </div>
       <p className="section-intro">
-        Households cut off as the scenario level keeps rising at{' '}
+        Households cut off as the scenario level keeps rising from the current level at{' '}
         {riseRateDefault.toFixed(1)} index points per hour.
       </p>
       <ol className="escalation-chart">
@@ -46,11 +46,6 @@ export function EscalationCurvePanel({
                 type="button"
                 onClick={() => onJumpToLevel(point.level)}
                 title={`Level ${point.level.toFixed(1)} · ${point.isolatedHouseholds} households cut off`}
-                aria-label={
-                  point.hours === 0
-                    ? `Now: level ${point.level.toFixed(1)}, ${point.isolatedHouseholds} households isolated. Jump the scenario slider to this level.`
-                    : `In ${point.hours} hours: level ${point.level.toFixed(1)}, ${point.isolatedHouseholds} households isolated. Jump the scenario slider to this level.`
-                }
               >
                 <span
                   className="escalation-bar-fill"
@@ -58,6 +53,12 @@ export function EscalationCurvePanel({
                 />
                 <span className="escalation-bar-value">{point.isolatedHouseholds}</span>
                 <span className="escalation-bar-hour">{point.hours === 0 ? 'now' : `+${point.hours}h`}</span>
+                <span className="sr-only">
+                  {point.hours === 0
+                    ? 'households isolated now'
+                    : `households isolated in ${point.hours} hours`}
+                  . Level {point.level.toFixed(1)}. Jump the scenario slider to this level.
+                </span>
               </button>
             </li>
           )

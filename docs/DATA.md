@@ -74,15 +74,18 @@ scenario rise rate (10 index points per hour). Each household gets one record:
 | `road_node_id` | The road-graph node the household was snapped to. |
 | `isolation_level` | The **widest-path (maximin)** level at which the last route to a safe place closes: the maximum, over routes, of the route's lowest edge threshold. `null` when no route exists. Not a distance. |
 | `nearest_safe_place_id` | The shelter or hospital on that best route. |
-| `bottleneck_road` | The lowest-threshold edge on that best route — the road to watch. Should be an `edge_id` matching `roads.json`. |
-| `bottleneck_road_name` | The street name for display, when the source edge has one. |
+| `bottleneck_road` | The lowest-threshold edge on that best route — the road to watch. Always an `edge_id` matching `roads.json`. |
+| `bottleneck_road_name` | The street's OpenStreetMap name for display, or the edge id again when the way has no name. |
 
-**Known defect in the committed file.** For **112 of the 400 households**, `bottleneck_road` holds an
-OpenStreetMap **street name** rather than an edge id, because the original script preferred the name
-when the edge had one. A name cannot be matched against `roads.json`, so those roads are listed in the
-app *marked* "street name only" and cannot be drawn. The script now emits the edge id in
-`bottleneck_road` and the name in `bottleneck_road_name`, but the file has **not** been regenerated;
-the app reads both shapes. See [`../data/README.md`](../data/README.md).
+**Unnamed ways are in the majority.** Only 356 of the study area's 4,958 drive edges carry a `name`
+in OpenStreetMap (24 distinct streets), so of the 387 households with a recorded route, 275 fall back
+to the edge id and 112 name one of 9 streets. `roadImpact.ts`'s `describeBottleneckRoad` labels those
+fallback rows *"Unnamed road segment"* and keeps the id as a muted secondary tag, so a raw id is never
+the headline. Naming an unnamed way is never attempted — the source data has no name to use.
+
+Because `bottleneck_road` is always an edge id, every group is locatable and drawable. The app still
+handles the older shape (a bare street name in `bottleneck_road`) that the pre-regeneration file used.
+See [`../data/README.md`](../data/README.md).
 
 ## Data quality note
 

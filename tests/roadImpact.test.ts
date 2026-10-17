@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import {
+  UNNAMED_ROAD_LABEL,
   buildBottleneckRoadIndex,
   buildRoadEdgeIndex,
+  describeBottleneckRoad,
   describeBottleneckRoadGroups,
   findNearbyRoadEdges,
   getRoadDependants,
@@ -172,6 +174,40 @@ describe('describeBottleneckRoadGroups', () => {
     ]
     const groups = describeBottleneckRoadGroups(buildBottleneckRoadIndex(mixed, 0), roadIndex)
     assert.deepEqual(groups[0].safePlaceIds, ['S1', 'HOSP1'])
+  })
+})
+
+describe('describeBottleneckRoad', () => {
+  test('prefers the street name and keeps the edge id as the locatable key', () => {
+    assert.deepEqual(describeBottleneckRoad('edge-a', 'Cinema Road', true), {
+      label: 'Cinema Road',
+      edgeId: 'edge-a',
+      nameOnly: false,
+    })
+  })
+
+  test('names an unnamed but locatable edge honestly instead of printing its id', () => {
+    assert.deepEqual(describeBottleneckRoad('4011856400-4011856423-0', null, true), {
+      label: UNNAMED_ROAD_LABEL,
+      edgeId: '4011856400-4011856423-0',
+      nameOnly: false,
+    })
+  })
+
+  test('treats the pipeline fallback (name === edge id) as unnamed', () => {
+    assert.deepEqual(describeBottleneckRoad('edge-a', 'edge-a', true), {
+      label: UNNAMED_ROAD_LABEL,
+      edgeId: 'edge-a',
+      nameOnly: false,
+    })
+  })
+
+  test('keeps a legacy street-name value, and says it has no edge geometry', () => {
+    assert.deepEqual(describeBottleneckRoad('Cinema Road', undefined, false), {
+      label: 'Cinema Road',
+      edgeId: null,
+      nameOnly: true,
+    })
   })
 })
 

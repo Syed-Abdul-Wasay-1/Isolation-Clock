@@ -20,6 +20,7 @@ import type { ResourceConfig } from '../simulation/resourceMatching'
 import {
   buildBottleneckRoadIndex,
   buildRoadEdgeIndex,
+  describeBottleneckRoad,
   describeBottleneckRoadGroups,
   findNearbyRoadEdges,
 } from '../simulation/roadImpact'
@@ -142,9 +143,6 @@ export function IsolationClockPage() {
   )
 
   const rankedHouseholds = getRankedHouseholds(scenarios, smsOverrides)
-  const priorityRankByHousehold = new Map(
-    rankedHouseholds.map(({ scenario }, index) => [scenario.household.id, index + 1]),
-  )
 
   if (dataState.status === 'loading') {
     return <main className="loading-screen"><span className="loading-mark">IC</span><p>Preparing the Sukkur scenario…</p></main>
@@ -172,18 +170,21 @@ export function IsolationClockPage() {
     ({ scenario }) => scenario.status !== 'isolated',
   )
   const isolatedCount = scenarios.filter((scenario) => scenario.status === 'isolated').length
+  /**
+   * A household's rank is always *within its own tab* — rescue (already isolated) or evacuate — so
+   * the ranking row number, the "why this rank" panel and the map popup all show the same number.
+   * The before/after panel is the one cross-tab surface and labels its numbers "overall".
+   */
+  const priorityRankInTab = new Map<string, number>()
   const mapAnnotations = new Map<string, HouseholdMapAnnotation>()
-  for (const [index, { scenario, priority }] of isolatedHouseholds.entries()) {
-    mapAnnotations.set(scenario.household.id, {
-      rank: index + 1,
-      reasons: priority.topFactors.map((factor) => factor.label),
-    })
-  }
-  for (const [index, { scenario, priority }] of evacuateHouseholds.entries()) {
-    mapAnnotations.set(scenario.household.id, {
-      rank: index + 1,
-      reasons: priority.topFactors.map((factor) => factor.label),
-    })
+  for (const group of [isolatedHouseholds, evacuateHouseholds]) {
+    for (const [index, { scenario, priority }] of group.entries()) {
+      priorityRankInTab.set(scenario.household.id, index + 1)
+      mapAnnotations.set(scenario.household.id, {
+        rank: index + 1,
+        reasons: priority.topFactors.map((factor) => factor.label),
+      })
+    }
   }
   const selectedHousehold = rankedHouseholds.find(
     ({ scenario }) => scenario.household.id === selectedHouseholdId,
@@ -240,6 +241,15 @@ export function IsolationClockPage() {
   }))
   /** Edge ids that exist in `roads.json`; used to decide whether a reported road can be drawn. */
   const roadEdgeIds = roadIndex ? roadIndex.edgeIds : null
+  /** The selected household's bottleneck road, labelled so a bare edge id is never the headline. */
+  const selectedBottleneckRoad = selectedHousehold?.scenario.isolation.bottleneck_road ?? null
+  const selectedBottleneckRoadLabel = selectedBottleneckRoad
+    ? describeBottleneckRoad(
+        selectedBottleneckRoad,
+        selectedHousehold?.scenario.isolation.bottleneck_road_name,
+        roadEdgeIds?.has(selectedBottleneckRoad) ?? false,
+      )
+    : null
 
   /** Nearest road segments to a household, computed once per household and then cached. */
   function getNearbyEdges(householdId: string): RoadEdgeOption[] {
@@ -333,12 +343,13 @@ export function IsolationClockPage() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Isolation Clock home">
-          <span className="brand-mark"><span /></span>
+        <a className="brand" href="/">
+          <span className="brand-mark" aria-hidden="true"><span /></span>
           <span className="brand-copy">
             <strong>ISOLATION<span> CLOCK</span></strong>
             <small>COMMUNITY RESILIENCE · SUKKUR</small>
           </span>
+          <span className="sr-only">home</span>
         </a>
         <div className="topbar-meta">
           <span className="live-indicator"><i /> LOCAL SCENARIO</span>
@@ -491,6 +502,47 @@ export function IsolationClockPage() {
             onJumpToLevel={jumpToLevel}
           />
 
+          {selectedHousehold ? (
+            <WhyRankPanel
+              scenario={selectedHousehold.scenario}
+              priority={selectedHousehold.priority}
+              rank={selectedIndex + 1}
+              safePlaces={[...data.shelters, ...data.hospitals]}
+              scenarioLevel={scenarioLevel}
+              riseRateDefault={data.riseRateDefault}
+              bottleneckRoadLabel={selectedBottleneckRoadLabel}
+              resourceAssignment={allocation.assignments.get(selectedHousehold.scenario.household.id)}
+              unassigned={allocation.unassigned.find(
+                (item) => item.scenario.household.id === selectedHousehold.scenario.household.id,
+              )}
+              smsStatus={smsOverrides[selectedHousehold.scenario.household.id]?.smsStatus}
+              smsReportedFields={smsOverrides[selectedHousehold.scenario.household.id]?.reportedFields ?? []}
+              smsCheckins={smsOverrides[selectedHousehold.scenario.household.id]?.checkIns ?? []}
+              onBack={() => {
+                setActiveTab(selectedHousehold.scenario.status === 'isolated' ? 'rescue' : 'evacuate')
+                setSelectedHouseholdId(null)
+              }}
+            />
+          ) : (
+            <RankingPanel
+              isolatedHouseholds={isolatedHouseholds}
+              evacuateHouseholds={evacuateHouseholds}
+              isolatedCount={isolatedCount}
+              totalHouseholds={data.households.length}
+              isolatedPeople={isolatedPeople}
+              totalPeople={totalPeople}
+              activeIsolatedPeople={activeTab === 'rescue' ? isolatedPeople : evacuatePeople}
+              selectedHouseholdId={selectedHouseholdId}
+              priorityRankInTab={priorityRankInTab}
+              activeTab={activeTab}
+              allocation={allocation}
+              onTabChange={setActiveTab}
+              onSelectHousehold={setSelectedHouseholdId}
+              sortBy={rankingSort}
+              onSortChange={setRankingSort}
+            />
+          )}
+
           <CriticalRoadsPanel
             groups={bottleneckGroups}
             withoutBottleneckCount={householdsWithoutBottleneck.households}
@@ -538,45 +590,6 @@ export function IsolationClockPage() {
             }}
           />
 
-          {selectedHousehold ? (
-            <WhyRankPanel
-              scenario={selectedHousehold.scenario}
-              priority={selectedHousehold.priority}
-              rank={selectedIndex + 1}
-              safePlaces={[...data.shelters, ...data.hospitals]}
-              scenarioLevel={scenarioLevel}
-              riseRateDefault={data.riseRateDefault}
-              resourceAssignment={allocation.assignments.get(selectedHousehold.scenario.household.id)}
-              unassigned={allocation.unassigned.find(
-                (item) => item.scenario.household.id === selectedHousehold.scenario.household.id,
-              )}
-              smsStatus={smsOverrides[selectedHousehold.scenario.household.id]?.smsStatus}
-              smsReportedFields={smsOverrides[selectedHousehold.scenario.household.id]?.reportedFields ?? []}
-              smsCheckins={smsOverrides[selectedHousehold.scenario.household.id]?.checkIns ?? []}
-              onBack={() => {
-                setActiveTab(selectedHousehold.scenario.status === 'isolated' ? 'rescue' : 'evacuate')
-                setSelectedHouseholdId(null)
-              }}
-            />
-          ) : (
-            <RankingPanel
-              isolatedHouseholds={isolatedHouseholds}
-              evacuateHouseholds={evacuateHouseholds}
-              isolatedCount={isolatedCount}
-              totalHouseholds={data.households.length}
-              isolatedPeople={isolatedPeople}
-              totalPeople={totalPeople}
-              activeIsolatedPeople={activeTab === 'rescue' ? isolatedPeople : evacuatePeople}
-              selectedHouseholdId={selectedHouseholdId}
-              priorityRankByHousehold={priorityRankByHousehold}
-              activeTab={activeTab}
-              allocation={allocation}
-              onTabChange={setActiveTab}
-              onSelectHousehold={setSelectedHouseholdId}
-              sortBy={rankingSort}
-              onSortChange={setRankingSort}
-            />
-          )}
           <footer className="side-footer">
             <span>LOCAL MODEL · NO PERSONAL DATA</span>
             <span>v0.1</span>

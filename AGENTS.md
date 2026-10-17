@@ -150,6 +150,7 @@ Load the matching skill before working in its area:
 | `.agents/skills/data-pipeline/` | Regenerating or debugging the Python pipeline / `public/data`. |
 | `.agents/skills/frontend-ui/` | Editing the React/Leaflet UI or `styles.css`. |
 | `.agents/skills/hackathon-submission/` | Preparing or checking the submission artifacts. |
+| `.agents/skills/axe-core-accessibility-testing/` | Auditing the UI for WCAG / axe accessibility violations. |
 
 ## 9. Code conventions
 

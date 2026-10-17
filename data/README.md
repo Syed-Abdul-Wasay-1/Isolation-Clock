@@ -10,7 +10,6 @@ the browser actually loads.
 |---|---|---|
 | `data/` (this folder) | Offline source inputs and this documentation. Consumed by `scripts/`. | Yes — the inputs are small and are kept so the pipeline stays reproducible |
 | `public/data/` | The **precomputed JSON that ships with the app** and is fetched in the browser. | Yes — small, static |
-| `cache/` (repo root) | Raw Overpass responses, keyed by request hash, so a re-run does not hit the network again. | Yes |
 | Large raw exports (`*.osm`, `*.pbf`, `*.tif`, `*.gpkg`, `*.shp`) | Downloadable again at will. | **No** — gitignored |
 
 Flow:
@@ -41,7 +40,7 @@ Total committed working tree is under 4 MB, of which the only large file is the 
 | **Road network** | The study-area road network as GeoJSON, with a per-edge scenario threshold derived from node exposure. Built from OpenStreetMap; a synthetic grid is used only if the OSM query returns too few roads. |
 | **Isolation levels** | Per household: the widest-path level at which its last route to a safe place closes, plus the safe place and bottleneck road for that route. |
 
-### Isolation fields, and the one caveat in the committed file
+### Isolation fields
 
 `public/data/isolation.json` stores, per household:
 
@@ -49,19 +48,21 @@ Total committed working tree is under 4 MB, of which the only large file is the 
 |---|---|
 | `isolation_level` | The widest-path (maximin) level at which the last route to a shelter or hospital closes. `null` when no route exists. |
 | `nearest_safe_place_id` | The shelter or hospital on that best route. |
-| `bottleneck_road` | The lowest-threshold edge on that best route — the road to watch. |
+| `bottleneck_road` | The lowest-threshold edge on that best route — the road to watch — as an `edge_id` that matches `roads.json`. |
+| `bottleneck_road_name` | The street's OpenStreetMap name for display, or the edge id again when the way carries no name. |
 
-**Caveat.** In the committed dataset, `bottleneck_road` holds either a road **edge id** (e.g.
-`4011856400-4011856423-0`) or, for **112 of the 400 households**, an OpenStreetMap **street name**
-(e.g. `Cinema Road`). The original pipeline preferred the street name when the edge had one, and a
-name cannot be matched against `roads.json`, which ships edge ids only. Those 112 households are
-therefore listed but cannot be highlighted on the map.
+**Unnamed roads are the common case, not an error.** Only **356 of the study area's 4,958 drive
+edges** have a `name` tag in OpenStreetMap at all (24 distinct streets). So of the 387 households with
+a recorded route, **275 fall back to the edge id** and **112 name one of 9 streets** — Cinema Road,
+Workshop Road, Archer Street, Military Road, High Court Road, Queen's Road, Labe Mehran Road, Teer
+Chowk Bhutta Road and New Pind Road. The app renders the fallback rows as *"Unnamed road segment"*
+and keeps the id as a muted secondary tag, so a raw edge id is never printed as though it were a road
+name. Naming an unnamed way would be a claim the source data does not support, so it is not done.
 
-`scripts/build_isolation_clock.py` has since been changed to always write the edge id to
-`bottleneck_road` and the street name to a new `bottleneck_road_name` field. **The data has not been
-regenerated**, so the committed file still has the old shape. Regenerating needs Python with
-`osmnx` / `networkx` / `geopandas`; see [`../scripts/README.md`](../scripts/README.md). The app reads
-both shapes.
+Because `bottleneck_road` is always an edge id, every group is locatable and can be highlighted on
+the map. The app still tolerates the older shape — a bare street name in `bottleneck_road` — that the
+pre-regeneration file used. Regenerating needs Python with `osmnx` / `networkx` / `geopandas`; see
+[`../scripts/README.md`](../scripts/README.md).
 
 ## How the synthetic data is generated
 

@@ -1,0 +1,3 @@
+# Isolation Clock — static scenario simulator. All routes are public.
+User-agent: *
+Allow: /

@@ -47,6 +47,14 @@ coverage/
 __pycache__/
 *.pyc
 
+# Python virtualenv for the offline pipeline (see requirements.txt)
+.venv/
+venv/
+
+# AI browser-tool session artifacts: console logs, page snapshots, storage state
+.playwright-mcp/
+state/
+
 # Deploy platforms
 .vercel/
 .netlify/

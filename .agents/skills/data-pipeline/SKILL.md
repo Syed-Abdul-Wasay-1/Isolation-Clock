@@ -64,9 +64,9 @@ Defined in `src/types/study.ts` and described in `docs/DATA.md`. Highlights:
 **`bottleneck_road_name`** carries the OpenStreetMap street name for display (falling back to the edge
 id when the way has no name). Do not go back to writing the street name into `bottleneck_road`: a name
 is not locatable in the shipped road data, so the map cannot draw it and the UI has to disclaim it.
-`build_isolation_clock.py` was fixed to this shape, but **`public/data/isolation.json` has not been
-regenerated** — 112 of its 400 households still carry a street name in `bottleneck_road`. The app
-reads both shapes; regenerate when you next have the Python stack installed.
+`build_isolation_clock.py` was fixed to this shape, and **`public/data/isolation.json` has been
+regenerated to match** (Oct 2026) — all 387 routed households now carry an edge id, 112 of them with a
+street name. The app still reads both shapes.
 
 `isolation_level` may be `null` when a household has no directed route; the app must keep handling
 that, even though the current dataset has none.
@@ -80,7 +80,7 @@ that, even though the current dataset has none.
    `docs/DATA.md` and `useStudyData.ts` validation together.
 4. **Do not relabel the numbers.** `threshold` and `isolation_level` are a 0-100 relative index, not
    depth. `docs/SIMULATION.md` is the source of truth for that wording.
-5. `scripts/__pycache__/` is committed in this repo. Ignore it; do not add to it deliberately.
+5. `__pycache__/` is gitignored — never commit Python bytecode.
 
 ## Verify after regenerating
 

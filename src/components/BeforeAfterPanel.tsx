@@ -119,7 +119,10 @@ export function BeforeAfterPanel({
       <p className="comparison-summary">{summary}</p>
 
       <section className="comparison-section" aria-labelledby="top-now-title">
-        <h3 id="top-now-title">Top 10 now</h3>
+        <h3 id="top-now-title">
+          Top 10 now
+          <span>overall priority, both tabs</span>
+        </h3>
         <ol className="comparison-list">
           {rankedHouseholds.slice(0, 10).map(({ scenario, priority }, index) => {
             const householdId = scenario.household.id

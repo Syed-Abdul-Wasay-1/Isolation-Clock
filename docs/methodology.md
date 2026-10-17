@@ -86,9 +86,15 @@ Confidence     = max(0, 1 − 0.2 × count(missing vulnerability fields))
 
 Households are ordered by priority score, then by ETI (ascending), fewer missing fields, and id.
 The ranking is split into two tabs — **Needs rescue now** (already isolated) and **Not yet
-isolated** — and every row is **explainable**: it names the safe place, the bottleneck road and the
-top contributing factors. Confidence is reported separately and does **not** change the score;
-unverified SMS check-ins are counted separately and never raise it.
+isolated**. A household's **rank number is its position inside its own tab**, so the row number, the
+"why this rank" panel and the map popup always show the same value — #1 is the top household of that
+tab, not of the whole 400. (An isolated household sits high in the overall order, so its overall
+position can be larger than the size of its own tab; that is deliberate, not a bug.) The one
+cross-tab surface is the **before/after** panel, which works from the *overall* order (both tabs
+together) and labels its column **"overall priority, both tabs"**. Every row is **explainable**: it
+names the safe place, the bottleneck road and the top contributing factors. Confidence is reported
+separately and does **not** change the score; unverified SMS check-ins are counted separately and
+never raise it.
 
 ## 6. From ranking to roads: the two road views
 
@@ -108,10 +114,11 @@ the bottleneck of the *best* route only, so a group means "households whose best
 uses this road", not a proven set of households whose closure would isolate them. Nothing is
 recomputed and no `isolation_level` is ever edited.
 
-The value is usually a road edge id, but for 112 of the 400 shipped households the offline pipeline
-recorded an OpenStreetMap **street name** instead (it preferred the street's name when the edge had
-one). A value that is not an edge id cannot be located in `roads.json`, so the panel lists it, marks
-it *street name only*, and never draws it. See [`../data/README.md`](../data/README.md).
+The value is a road edge id, so a group can always be located in `roads.json` and highlighted on the
+map. Where OpenStreetMap has a street name for the way, the row shows it; where it does not — 275 of
+the 387 households with a known route, since only 356 of the study area's 4,958 drive edges are named
+at all — the row reads *"Unnamed road segment"* with the edge id kept as a muted secondary tag. A name
+is never invented for an unnamed way. See [`../data/README.md`](../data/README.md).
 
 **People, not just households.** Every headline count is reported as households **and** people,
 using `household_size`. A household with a missing or invalid size is counted as a household and

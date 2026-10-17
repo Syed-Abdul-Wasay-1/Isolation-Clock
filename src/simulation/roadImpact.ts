@@ -138,6 +138,41 @@ export function describeBottleneckRoadGroups(
     )
 }
 
+/**
+ * Shown when a bottleneck way carries no `name` tag in OpenStreetMap. Only 356 of the study area's
+ * 4,958 drive edges are named at all, so an unnamed segment is the common case, not an error — and
+ * inventing a name for one would be a claim the data does not support.
+ */
+export const UNNAMED_ROAD_LABEL = 'Unnamed road segment'
+
+/**
+ * How one bottleneck road should be presented. `bottleneck_road` is the locatable edge id in the
+ * regenerated dataset, with the OpenStreetMap street name — when the way has one — in
+ * `bottleneck_road_name`. The pre-regeneration file still mixes the two, holding a bare street name
+ * for some households, so both shapes are handled here and a raw edge id is never printed as if it
+ * were a road name.
+ */
+export interface BottleneckRoadLabel {
+  /** The primary, human-readable label. */
+  label: string
+  /** The locatable edge id, shown muted when it differs from the label; `null` when there is none. */
+  edgeId: string | null
+  /** True when the value is a street name with no locatable edge — the legacy dataset shape. */
+  nameOnly: boolean
+}
+
+export function describeBottleneckRoad(
+  bottleneckRoad: string,
+  bottleneckRoadName: string | null | undefined,
+  drawable: boolean,
+): BottleneckRoadLabel {
+  const name =
+    bottleneckRoadName && bottleneckRoadName !== bottleneckRoad ? bottleneckRoadName : null
+  if (name) return { label: name, edgeId: bottleneckRoad, nameOnly: false }
+  if (drawable) return { label: UNNAMED_ROAD_LABEL, edgeId: bottleneckRoad, nameOnly: false }
+  return { label: bottleneckRoad, edgeId: null, nameOnly: true }
+}
+
 /** The dependants of one road: every household whose recorded bottleneck is that road. */
 export function getRoadDependants(
   bottleneckRoad: string | null,

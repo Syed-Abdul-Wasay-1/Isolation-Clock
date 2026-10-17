@@ -36,7 +36,10 @@ THE MODEL (do not change the meaning of these without saying so)
 - Confidence (completeness) is separate from the score: 1 - 0.2 * (number of missing vulnerability
   fields), floored at 0. Missing fields add zero points and only lower confidence. Applied SMS
   check-ins are unverified and never raise it; they are reported as a separate count.
-- Ranking: score desc, then ETI asc, then fewer missing fields, then household id.
+- Ranking: score desc, then ETI asc, then fewer missing fields, then household id. The number the user
+  sees is the rank WITHIN the household's own tab (rescue or evacuate) and is the same in the list,
+  the detail panel and the map popup; the before/after panel is the only cross-tab view and labels its
+  column "overall priority, both tabs".
 - Resource matching is greedy: already-isolated households get boats, others get vehicles, closest
   safe place with enough beds (straight-line Haversine distance), beds consumed by household size.
   Destinations are shelters AND hospitals: the isolation model already routes households to both.
@@ -57,10 +60,11 @@ DATA FILES (public/data/)
 - meta.json         study area, seed 20261017, fallback details
 
 KNOWN DATA CAVEAT
-- For 112 of the 400 households, isolation.json's bottleneck_road is an OSM STREET NAME rather than
-  an edge id, so it cannot be located in roads.json. The panel lists it as "street name only" and
-  never draws it. scripts/build_isolation_clock.py has been fixed to emit the edge id in
-  bottleneck_road plus a new bottleneck_road_name, but public/data has NOT been regenerated.
+- Every isolation.json bottleneck_road is now a locatable edge id, with the OSM street name (when the
+  way has one) in bottleneck_road_name. Only 356 of the 4,958 drive edges are named at all, so 275 of
+  the 387 routed households have no name and the UI shows them as "Unnamed road segment" with the id
+  as a muted tag. public/data was regenerated in Oct 2026; the app still reads the older
+  street-name-in-bottleneck_road shape.
 
 KEY FILES
 - src/pages/IsolationClockPage.tsx      page state, playback, focus, ranking composition

@@ -5,7 +5,8 @@
 >
 > **Format:** Date - Goal - Prompt - Model - Outcome.
 >
-> All entries below were produced with **Claude Sonnet 5.5**.
+> All entries below were produced with **Claude Sonnet 5.5** unless the entry names a different model;
+> the `Model:` line in each entry is authoritative.
 
 ## Strategy
 
@@ -557,6 +558,198 @@ noted in the outcome rather than invented as a prompt.
 
 ---
 
+## Test tooling — browser testing MCP servers and skills
+
+### 2026-10-17 - Free browser testing setup: Playwright MCP, Chrome DevTools MCP, OpenTest and axe-core skills - PARTIAL
+
+- **Model:** DeepSeek V4.1 Flash Free (opencode)
+- **Done by:** 
+- **Goal:** Give the agent a free, local browser-testing stack for Isolation Clock — functionality/E2E,
+  UI/UX, accessibility and performance — through two MCP servers plus testing skills, without touching
+  the app's source.
+- **Prompt:**
+  > *"I want you to set up free browser testing tools for this project so you can test my web app's
+  > functionality, UI/UX, accessibility and performance. Do the setup yourself, step by step, and tell me
+  > what you did at the end."* — a five-step spec: check prerequisites, add the `playwright` and
+  > `chrome-devtools` MCP servers, install the `ux-test` / `a11y-test` / `e2e-test` and axe-core skills,
+  > verify, then smoke-test the dev server. Abridged rules: touch only MCP config, skills folders and dev
+  > dependencies, and ask before writing outside the project folder.
+- **Outcome:** **Environment.** OpenCode v2.0.32, Node 24.14.1, npx 11.11.0 and Chrome 155.0.8059.80 — every
+  prerequisite was already satisfied. MCP config lives in the project `opencode.json`. **MCP.** Added
+  `playwright` (`npx -y @playwright/mcp@latest`) and `chrome-devtools` (`npx -y chrome-devtools-mcp@latest`);
+  both report `connected` and their tools are live (25 and 32 tools). `opencode mcp add` stores the command
+  as a single array element when the arguments follow `--`, which yields a server that cannot start — even
+  the command's own documented example (`opencode mcp add everything -- npx -y
+  @modelcontextprotocol/server-everything`) fails with `Unrecognized flag: -y`. Repaired by hand-editing the
+  `command` array to `["npx","-y","<pkg>"]`, the hand-configuration route the MCP docs describe; this looks
+  like a genuine CLI bug worth filing upstream. **Skills.** `ux-test`, `a11y-test` and `e2e-test` were
+  **already installed** in `.agents/skills/` and are byte-identical to `coderphonui/opentest` HEAD —
+  verified by comparing `git hash-object` against the upstream blob SHAs, including `scan_a11y.py` and
+  `heuristics.md` — so nothing was reinstalled. The axe command exactly as written failed:
+  `npx skills add … --skill axe-core-accessibility-testing` finds only 13 skills, because that CLI scans
+  `.claude/skills/` and `packs/` but not `seed-skills/`, where the skill actually lives; the name in the
+  brief comes from the SKILL.md frontmatter (`name: Axe-core Accessibility Testing`). Installed instead by
+  pointing at the directory —
+  `npx skills add "https://github.com/pramoddutta/qaskills/tree/main/seed-skills/axe-accessibility" -a opencode --copy -y`
+  — which landed in `.agents/skills/axe-core-accessibility-testing` and added a `skills-lock.json` entry with
+  the existing entries preserved. **Dependencies.** `@playwright/test` 1.64.1 and `@axe-core/playwright`
+  4.14.0 were already in `devDependencies`; `npm install -D` reported "up to date" and Chromium revision
+  1248 — exactly what Playwright 1.64.1 expects — was already in the browser cache, so that step was a
+  no-op. **Smoke test.** Reused the dev server that was already running (`vite --port 5173 --strictPort`)
+  instead of starting a second one on a strict port. The Playwright MCP loaded the app (title "Isolation
+  Clock | Sukkur scenario", 400 households / 1043 people / 7 safe places, scenario level 0) and captured a
+  screenshot; the single console error is a 404 for `/favicon.ico`. A Lighthouse run through the Chrome
+  DevTools MCP gave Accessibility 94, Best Practices 100 and SEO 92, with six failing audits:
+  `aria-command-name` (7 Leaflet shelter/hospital markers are `role="button"` with no accessible name),
+  `color-contrast` (10 nodes), `label-content-name-mismatch` (1 node), plus `robots-txt`,
+  `agent-accessibility-tree` and `llms-txt`. A cold-load performance trace worked and reported LCP 1018 ms
+  with CLS 0.00. The a11y findings are reported, not fixed, because the brief said not to touch app source.
+  **Left over.** `opencode.json`, the new skill folder and `src/.playwright-mcp/` are untracked; nothing was
+  committed.
+
+---
+
+## Fixing the test report's accessibility and consistency findings
+
+### 2026-10-17 - Fix every issue in test-report.md / test-summary.md - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (opencode)
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Close out the testing pass's findings — HIGH-1..HIGH-3, MEDIUM-1..MEDIUM-3, LOW-1..LOW-5
+  and the Lighthouse `label-content-name-mismatch` — without breaking the model or the honesty rules.
+- **Prompt:**
+  > *"read these and fix all the issues."* (pointing at `test-report.md` and `test-summary.md`)
+- **Outcome:** **HIGH-1 (rank meaning).** Picked the *within-tab* rank as the single definition and
+  built it once in `IsolationClockPage.tsx` (`priorityRankInTab`, built in the same loop as the map
+  annotations over `isolatedHouseholds` + `evacuateHouseholds`). The global map is gone, so the
+  ranking row number, the "why this rank" panel (`selectedIndex + 1`) and the map popup now agree;
+  the map popup keeps `H294 · Rank #254`-style within-tab numbers. `BeforeAfterPanel` is the one
+  cross-tab surface and keeps the overall order, with its "Top 10 now" heading now carrying the
+  explicit label **"overall priority, both tabs"** so it is never confused with the list.
+  `RankingPanel`'s prop was renamed to `priorityRankInTab` and `IsolationMap`'s `annotations` /
+  `HouseholdMapAnnotation` now document the within-tab meaning. **HIGH-2 (focus).** `.scenario-slider`
+  gained a `:focus-visible` outline and a thumb ring, and its box was widened to 44 px for touch
+  (the visible track stays 4 px, painted by the track pseudo-elements). **HIGH-3 (marker names).**
+  `IsolationMap` now builds each shelter/hospital `divIcon` with a glyph hidden from assistive tech
+  (`aria-hidden`) plus an `sr-only` shelter/hospital name, so the Leaflet `role="button"` markers are
+  named; the icons are memoised in a `Map` keyed by id. **MEDIUM-1 (contrast).** Every muted
+  grey / red text token that was below 4.5:1 was replaced with a minimally darkened, hue-preserving
+  value (77 tokens in `styles.css`), e.g. `#ca6258 → #b75950` (the critical-road count, 3.88 → 4.6),
+  `#8b9692 → #67706d` (the escalation hour labels, 2.75 → 4.6), `#929c99 → #6f7774`, and the muted
+  greys to `#6c7871`-family values. The escalation bar's `linear-gradient(#e07d6d, #ca6258)` fill was
+  **left as-is**: it is a chart fill, not text, and its value is also printed as text.
+  **MEDIUM-2 (tablist).** `RankingPanel` now has an `onKeyDown` handler implementing the WAI-ARIA
+  pattern: ArrowLeft/ArrowUp, ArrowRight/ArrowDown, Home and End move the selection and the focus,
+  with roving `tabIndex`. **MEDIUM-3 (sticky banner).** In the ≤760 px layout the `.topbar` and
+  `.simulation-banner` are now `position: sticky` (z-index above Leaflet's controls) so the
+  "scenario simulator, not a flood forecast" framing survives scrolling on mobile.
+  **LOW-1 (touch targets).** Buttons, selects and inputs were raised to ~40–44 px (`.scenario-button`,
+  `.speed-control select`, `.show-all-button`, `.ranking-tab`, `.back-button`, `.allocation-controls
+  input`, `.sms-*`, `.critical-road-open`, `.road-report-*`); the Leaflet zoom control is left at its
+  default 30 px (it is third-party and still passes the 24 px rule). **LOW-2 (input feedback).**
+  `ResourceAllocationPanel` keeps an `inputMessage` in state and renders it in a `role="status"`
+  line: a negative / empty / non-numeric value is rejected with *"… must be a number of 0 or more —
+  the previous value was kept."*, and a decimal is floored with *"… must be a whole number — rounded
+  down to N."* **LOW-3 (street-name-only roads).** The focused detail block now says, for a group with
+  no edge geometry, that it is recorded as a street name only and therefore cannot be highlighted on
+  the map. **LOW-4 (ranking position).** The ranking / why-rank block was moved from last to
+  directly after the escalation curve panel. **LOW-5 (assets).** `public/` gained `favicon.svg`,
+  `robots.txt` and `llms.txt`, and `index.html` links the favicon with `%BASE_URL%favicon.svg`
+  (sub-path-safe). `roads.json` is untouched — it can only be shrunk by re-running the Python
+  pipeline or by host-side gzip/brotli, which is Vercel/Netlify's job. **label-content-name-mismatch.**
+  The brand link dropped its `aria-label` and now hides the mark with `aria-hidden` plus an
+  `sr-only` "home"; the nine escalation bars dropped their `aria-label` and gained an `sr-only`
+  description that *contains* the visible number and hour text, so the accessible name matches.
+  **Honesty copy.** The escalation intro now says the curve rises "from the current level", matching
+  the observation in the report; no forecast / depth / worker / sensitivity wording was introduced.
+  **Docs.** `docs/methodology.md` §5, `docs/ALLOCATION.md`, `docs/architecture.md` (ranking UI row +
+  a new accessibility principle) and `README.md` (ranking + before/after rows, `public/` tree) were
+  updated to state the within-tab rank, the overall before/after rank, and the new assets. No new
+  correction row was needed: no doc had claimed the rank was global — the drift was inside the code
+  (the map component's comment already said "within its own tab").
+
+---
+
+### 2026-10-18 - Critical-road names: label unnamed ways and regenerate the dataset - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Explain why the "Critical roads" panel prints raw OSM edge ids such as
+  `4011856400-4011856423-0` as if they were road names, and fix it if it can be fixed.
+- **Prompt:**
+  > *"why are the names like this can they be fixed"* (pasting the whole 42-row bottleneck list from the
+  > BOTTLENECK ROADS / Critical roads panel)
+- **Outcome:** The list mixed two kinds of value because the committed `isolation.json` came from a
+  pre-fix pipeline that wrote the street *name* into `bottleneck_road` when the OSM way had one and the
+  raw edge id otherwise — 9 street-name groups (112 households) and 33 edge-id groups (275).
+  `roads.json` ships no names, so nothing at runtime could turn an id into a label. Reading the
+  committed `data/roads_*.graphml` settled the question: only **356 of the 4,958 drive edges (7.2 %, 24
+  streets)** carry a `name` at all, **none** of the 33 bottleneck ways has one, none shares a way with a
+  named segment and just one has even a `ref`, so those names do not exist and would have had to be
+  invented. Kept: the honest label. Added: `describeBottleneckRoad` in `src/simulation/roadImpact.ts`
+  returns `{ label, edgeId, nameOnly }` — the street name when there is one, otherwise *"Unnamed road
+  segment"* with the edge id demoted to a muted mono tag — and `CriticalRoadsPanel.tsx` plus
+  `WhyRankPanel.tsx` (new `bottleneckRoadLabel` prop from the page) use it, so a raw id is never the
+  headline. 4 cases added to `tests/roadImpact.test.ts`. Then installed
+  osmnx/geopandas/networkx/pyproj/shapely into a throwaway venv and re-ran
+  `scripts/build_isolation_clock.py` **offline** from the committed graphml / elevation / water caches —
+  no hand-editing of `public/data`, per the data-pipeline skill. Checked before/after: `roads.json`
+  unchanged in content (4,958 features, 0 threshold and 0 geometry differences) and `isolation_level`,
+  `nearest_safe_place_id` and `road_node_id` **identical for all 400 households**. All 387 routed
+  households now carry an edge id, 112 of them with a street name, and the 9 previously un-locatable
+  groups are drawable — which also closes LOW-3 from the test report. Deliberately **not** done: naming
+  an unnamed way, and aggregating by street name (the segments close at different levels, so a single
+  row would have to print a range) — recorded in `docs/tradeoffs.md`. Docs synced: `data/README.md`,
+  `docs/DATA.md`, `docs/methodology.md`, `docs/tradeoffs.md`, `prompts/context.md`, `TASKS.md` and the
+  data-pipeline skill; `test-report.md` LOW-3 and `test-summary.md` marked resolved.
+
+---
+
+### 2026-10-18 - Dead-file sweep: remove leftovers and fix the folder structure - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Strip the leftover junk the earlier test and data passes left in the working tree, and
+  correct anything the structure tree claimed but the folders did not actually contain.
+- **Prompt:**
+  > *"ok now just remove the useless old data files etc too now and fix the folder structure if needed
+  > too"*
+- **Outcome:** Audited the repo against `git ls-files` before deleting anything, then split the
+  candidates into "obviously regenerable debris" and "committed files someone chose to keep", acted on
+  the first group and asked about the second — the user approved all three of the second group.
+  **Removed (regenerable, nothing imports them):** `src/.playwright-mcp/` (1.37 MB / 27 files of console
+  logs, page snapshots and a stray PNG left by the browser tooling on 2026-10-17 — the session's working
+  directory is `src/`, which is why it landed there), `scripts/__pycache__/` (30 KB of bytecode from the
+  offline pipeline run), `state/` (a stray **empty** root directory with no reference anywhere),
+  `dist/` (1.82 MB of build output; `npm run build` restores it) and seven `.gitkeep` placeholders in
+  folders that now hold real files (`scripts/`, `src/components/`, `hooks/`, `pages/`, `simulation/`,
+  `types/`, `assets/`). `src/assets/` was empty with nothing importing it, so the folder went too and its
+  line came out of the README tree. `screenshots/.gitkeep` was **kept** — that folder is intentionally
+  empty and both the README and `TASKS.md` refer to it. **Removed after asking:** the root `cache/` of
+  five raw Overpass responses (two of them empty, ~171 KB) — read the scripts first: neither ever opens
+  it, they cache into `data/` and `public/data/`, so it was dead weight; its row in `data/README.md` and
+  its mention in `TASKS.md` T16 went with it. The ten vendored generic skills
+  (`playwright-core` 51 files, `playwright-cli`, `playwright-ci`, `playwright-qa`, `playwright-pom`,
+  `playwright-migration`, `playwright-frontend`, `ux-test`, `a11y-test`, `e2e-test` — 2.08 MB in total),
+  keeping the four project skills plus the axe-core accessibility skill and trimming
+  `skills-lock.json` to match; the axe-core skill was added to `AGENTS.md` §8 so the table matches the
+  folder. And `test-report.md` + `test-summary.md` (36 KB of QA evidence). **Kept on purpose:** the
+  `data/*.graphml` / `*.geojson` / `elevations*.json` caches — they are not dead data, they are the
+  offline regeneration cache the previous task relied on, and `docs/architecture.png` plus its editable
+  `.svg`, both linked from the README. **`.gitignore`** gained `.playwright-mcp/`, `state/`, `.venv/` and
+  `venv/` so nothing here comes back, and the `data-pipeline` skill note that claimed
+  `scripts/__pycache__/` "is committed in this repo" was corrected — it is not, and must not be.
+  **Drift found while sweeping:** the README said "111 tests" and the `TASKS.md` status table said "111
+  pass across 22 suites" — the real numbers are **115 tests in 23 suites**, so both were refreshed along
+  with the repo-size figures in T16 (working tree 4.24 MB in 100 files, `.git` 2.02 MB, largest file the
+  2.0 MB graphml). The `2026-10-17` entries above that cite `test-report.md` / `test-summary.md` were
+  left untouched: this log is a record, and those files really did exist when the work was done.
+  Verified: `npx tsc -b` clean, `npx oxlint` clean, `npm run build` clean, `npm test` **115/115**; every
+  remaining relative doc link still resolves and no kept file references a removed path. Nothing was
+  committed — the whole sweep, including the earlier naming fix, is left in the working tree.
+
+---
+
 ## Corrections to earlier drafts
 
 Kept on purpose: the rules ask us to be explicit about behaviour, and an honest log is worth more
@@ -570,6 +763,7 @@ than a flattering one.
 | "**Python was dropped entirely.**" | Wrong. Python (`scripts/`) generates every file in `public/data/`. |
 | "Road tolerance is about **0.30 m**." | Not implemented. There is no depth tolerance; thresholds are a 0-100 relative exposure percentile. |
 | "**We do not assign vehicles** - allocation stays human." | Partly outdated. `resourceMatching.ts` now makes a greedy boat/vehicle/bed suggestion; the docs note it is not dispatch. |
+| "112 households record their bottleneck road as an OpenStreetMap street name, so those roads **cannot be highlighted on the map**." | Fixed Oct 2026 by regenerating `public/data`: all 387 routed households now carry a locatable edge id, with the street name (when one exists) moved to a separate `bottleneck_road_name` display field. |
 
 ---
 

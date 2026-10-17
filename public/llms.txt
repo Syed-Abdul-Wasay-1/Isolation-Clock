@@ -1,0 +1,20 @@
+# Isolation Clock
+
+> A frontend-only flood scenario simulator for Sukkur, Sindh, Pakistan. It ranks synthetic
+> households by estimated time until isolation (ETI) — how long before every road out closes —
+> rather than by current flood depth.
+
+Key facts:
+
+- The scenario level is a unitless 0–100 relative exposure index, **not** water depth in cm or metres.
+- This is a decision-support aid and a **scenario simulator, not a forecast**, and not dispatch.
+- Households are synthetic. Buildings, roads and amenities come from OpenStreetMap.
+- Fully client-side: precomputed JSON in `public/data/`, no server, no Web Worker, no service worker.
+
+## Docs
+
+- [README](./README.md) — what the project is and how to run it
+- [Methodology](./docs/methodology.md) — ETI, exposure index and the ranking
+- [Scoring](./docs/SCORING.md) — priority score and confidence
+- [Allocation](./docs/ALLOCATION.md) — boat / vehicle / bed assignment
+- [Architecture](./docs/architecture.md) — components and data flow

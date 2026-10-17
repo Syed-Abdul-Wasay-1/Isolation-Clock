@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatPeopleCount } from '../simulation/population'
+import { describeBottleneckRoad } from '../simulation/roadImpact'
 import type { BottleneckRoadGroup } from '../simulation/roadImpact'
 
 interface CriticalRoadsPanelProps {
@@ -26,6 +27,9 @@ export function CriticalRoadsPanel({
   const [showAll, setShowAll] = useState(false)
   const visibleGroups = showAll ? groups : groups.slice(0, VISIBLE_GROUPS)
   const goal = groups[0]
+  const goalRoad = goal
+    ? describeBottleneckRoad(goal.bottleneckRoad, goal.displayName, goal.drawable)
+    : null
 
   return (
     <section className="critical-roads-panel" aria-labelledby="critical-roads-title">
@@ -38,11 +42,11 @@ export function CriticalRoadsPanel({
       <p className="section-intro">
         Which single road, if it fails, breaks the most households&rsquo; modelled route out.
       </p>
-      {goal ? (
+      {goal && goalRoad ? (
         <p className="critical-roads-lead">
-          Worst single road: <strong>{goal.bottleneckRoad}</strong>
-          {goal.displayName ? ` (${goal.displayName})` : ''} is the recorded bottleneck for{' '}
-          <strong>{goal.households.length}</strong> of{' '}
+          Worst single road: <strong>{goalRoad.label}</strong>
+          {goalRoad.edgeId && <span className="road-edge-id"> ({goalRoad.edgeId})</span>} is the
+          recorded bottleneck for <strong>{goal.households.length}</strong> of{' '}
           {groups.reduce((sum, group) => sum + group.households.length, 0)} households with a known
           route.
         </p>
@@ -53,6 +57,11 @@ export function CriticalRoadsPanel({
         <ol className="critical-roads-list">
           {visibleGroups.map((group) => {
             const isFocused = focusedBottleneckRoad === group.bottleneckRoad
+            const road = describeBottleneckRoad(
+              group.bottleneckRoad,
+              group.displayName,
+              group.drawable,
+            )
             return (
               <li key={group.bottleneckRoad} className={isFocused ? 'is-focused' : undefined}>
                 <button
@@ -62,10 +71,8 @@ export function CriticalRoadsPanel({
                   onClick={() => onFocusRoad(isFocused ? null : group.bottleneckRoad)}
                 >
                   <span className="critical-road-name">
-                    <strong>{group.bottleneckRoad}</strong>
-                    {group.displayName && (
-                      <span className="critical-road-tag">{group.displayName}</span>
-                    )}
+                    <strong>{road.label}</strong>
+                    {road.edgeId && <span className="road-edge-id">{road.edgeId}</span>}
                     {!group.drawable && (
                       <span className="critical-road-tag">street name only · no edge geometry</span>
                     )}
@@ -90,6 +97,12 @@ export function CriticalRoadsPanel({
                     <p>
                       Serves: {group.safePlaceIds.length > 0 ? group.safePlaceIds.join(', ') : 'unknown'}
                     </p>
+                    {!group.drawable && (
+                      <p>
+                        Recorded as a street name only, so no edge geometry is stored and this road
+                        cannot be highlighted on the map.
+                      </p>
+                    )}
                     {group.topHouseholdId && (
                       <button
                         className="critical-road-open"

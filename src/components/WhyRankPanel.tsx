@@ -3,6 +3,7 @@ import { formatEti } from '../simulation/householdStatus'
 import type { PriorityFactor, PriorityScore } from '../simulation/priorityScore'
 import type { SafePlace } from '../types/study'
 import type { ResourceAssignment, UnassignedHousehold } from '../simulation/resourceMatching'
+import type { BottleneckRoadLabel } from '../simulation/roadImpact'
 import type { SmsCheckinRecord } from '../simulation/smsCheckins'
 
 interface WhyRankPanelProps {
@@ -12,6 +13,8 @@ interface WhyRankPanelProps {
   safePlaces: SafePlace[]
   scenarioLevel: number
   riseRateDefault: number
+  /** How the household's recorded bottleneck road should read (street name, or an honest fallback). */
+  bottleneckRoadLabel: BottleneckRoadLabel | null
   resourceAssignment: ResourceAssignment | undefined
   unassigned: UnassignedHousehold | undefined
   smsStatus: 'reported by SMS' | undefined
@@ -47,6 +50,7 @@ export function WhyRankPanel({
   safePlaces,
   scenarioLevel,
   riseRateDefault,
+  bottleneckRoadLabel,
   resourceAssignment,
   unassigned,
   smsStatus,
@@ -216,7 +220,10 @@ export function WhyRankPanel({
           <span className="route-icon route-road">↗</span>
           <span>
             <small>Bottleneck road</small>
-            <strong>{isolation.bottleneck_road || 'Not available'}</strong>
+            <strong>{bottleneckRoadLabel ? bottleneckRoadLabel.label : 'Not available'}</strong>
+            {bottleneckRoadLabel?.edgeId && (
+              <span className="road-edge-id">{bottleneckRoadLabel.edgeId}</span>
+            )}
           </span>
         </div>
         <div className="route-item">

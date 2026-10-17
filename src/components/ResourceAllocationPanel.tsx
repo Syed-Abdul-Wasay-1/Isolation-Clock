@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ResourceAllocation, ResourceConfig } from '../simulation/resourceMatching'
 
 type EditableResourceConfig = Pick<
@@ -16,6 +17,7 @@ export function ResourceAllocationPanel({
   config,
   onConfigChange,
 }: ResourceAllocationPanelProps) {
+  const [inputMessage, setInputMessage] = useState<string | null>(null)
   const assignedPeople = Array.from(allocation.assignments.values()).reduce(
     (sum, assignment) => sum + assignment.householdSize,
     0,
@@ -24,6 +26,22 @@ export function ResourceAllocationPanel({
     (sum, item) => sum + item.householdSize,
     0,
   )
+
+  /**
+   * The page ignores non-finite or negative values and floors the rest, which used to happen
+   * silently. Say what was rejected or rounded instead of letting the field snap back unexplained.
+   */
+  function commit(key: keyof EditableResourceConfig, label: string, raw: number) {
+    if (!Number.isFinite(raw) || raw < 0) {
+      setInputMessage(`${label} must be a number of 0 or more — the previous value was kept.`)
+      return
+    }
+    const rounded = key === 'bedCapacityMultiplier' ? raw : Math.floor(raw)
+    setInputMessage(
+      rounded === raw ? null : `${label} must be a whole number — rounded down to ${rounded}.`,
+    )
+    onConfigChange(key, raw)
+  }
 
   return (
     <section className="allocation-panel" aria-labelledby="allocation-title">
@@ -42,7 +60,7 @@ export function ResourceAllocationPanel({
             min="0"
             step="1"
             value={config.boats}
-            onChange={(event) => onConfigChange('boats', event.currentTarget.valueAsNumber)}
+            onChange={(event) => commit('boats', 'Boats', event.currentTarget.valueAsNumber)}
           />
         </label>
         <label>
@@ -53,7 +71,7 @@ export function ResourceAllocationPanel({
             min="0"
             step="1"
             value={config.vehicles}
-            onChange={(event) => onConfigChange('vehicles', event.currentTarget.valueAsNumber)}
+            onChange={(event) => commit('vehicles', 'Vehicles', event.currentTarget.valueAsNumber)}
           />
         </label>
         <label>
@@ -65,11 +83,14 @@ export function ResourceAllocationPanel({
             step="0.1"
             value={config.bedCapacityMultiplier}
             onChange={(event) =>
-              onConfigChange('bedCapacityMultiplier', event.currentTarget.valueAsNumber)
+              commit('bedCapacityMultiplier', 'Bed capacity multiplier', event.currentTarget.valueAsNumber)
             }
           />
         </label>
       </div>
+      <p className="allocation-message" role="status">
+        {inputMessage ?? ''}
+      </p>
       <div className="allocation-totals">
         <div><strong>{allocation.usedBoats}</strong><span>boats used / {config.boats}</span></div>
         <div><strong>{allocation.usedVehicles}</strong><span>vehicles used / {config.vehicles}</span></div>

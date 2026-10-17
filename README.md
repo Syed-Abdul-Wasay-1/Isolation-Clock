@@ -85,13 +85,16 @@ Isolation Clock/
 ├── vite.config.ts
 ├── tsconfig.json
 │
-├── .agents/skills/      # Repo skills an AI assistant can load (model, data, UI, submission)
+├── .agents/skills/      # Skills an AI assistant can load (model, data, UI, submission, a11y)
 │
 ├── scripts/             # One-off OFFLINE Python data prep (not deployed)
 │   ├── generate_data.py           #   OSM buildings/amenities -> synthetic households
 │   └── build_isolation_clock.py   #   elevation + water distance -> isolation levels
 │
 ├── public/
+│   ├── favicon.svg      # App icon
+│   ├── robots.txt       # Crawler directives for the static host
+│   ├── llms.txt         # Short machine-readable project summary
 │   └── data/            # Precomputed JSON shipped as static assets
 │                        #   households, shelters, hospitals, roads, isolation, meta
 │
@@ -103,14 +106,18 @@ Isolation Clock/
 │   ├── pages/           # IsolationClockPage — state and wiring
 │   ├── hooks/           # useStudyData (fetch) + studyDataValidation (pure validation)
 │   ├── types/           # Shared TypeScript types (household, safe place, isolation…)
-│   └── assets/          # Images, icons, styles input to the bundler
 │
 ├── tests/               # Model + data-loading tests — `npm test`, no dependencies
 │                        #   ETI/status, scoring, allocation, SMS overrides,
 │                        #   bottleneck grouping, escalation curve, data validation
 │
-├── data/                # Data documentation for the offline inputs
-│   └── README.md        #   How the synthetic data is generated; what it is NOT
+├── data/                # Committed caches the offline pipeline reuses (never deployed)
+│   ├── README.md        #   How the synthetic data is generated; what it is NOT
+│   ├── roads_<bbox>.graphml        # OSM drive graph; <bbox> = the study area, e.g.
+│   ├── buildings_<bbox>.geojson    #   27_688_27_711_68_838_68_883. Keeping these
+│   ├── amenities_<bbox>.geojson    #   caches lets the pipeline re-run with no network.
+│   ├── water_<bbox>.geojson        # Raw OSM water features
+│   └── elevations_<bbox>.json      # Per-node elevations (OpenTopoData / SRTM)
 │
 ├── docs/                # Architecture, assumptions, methodology, risks, trade-offs
 │   ├── README.md        #   Index + source material
@@ -207,12 +214,12 @@ the image is the diffable [`docs/architecture.svg`](docs/architecture.svg).
 | **Isolation map** | Where the households are, which roads are already closed, and which roads are *reported* blocked but unverified. |
 | **Scenario slider + playback** | How the picture changes as the level sweeps 0 → 100. |
 | **Escalation curve** | How many households *and people* are cut off at +1 h, +2 h, +3 h … at the illustrative rise rate. Clicking an hour jumps the slider there. |
-| **Critical roads** | Which single road is the last way out for the most households, how many people depend on it, and which safe places it serves. |
-| **Ranking** | Who to reach first, explainable row by row, with household and people totals. |
+| **Critical roads** | Which single road is the last way out for the most households, how many people depend on it, and which safe places it serves. Roads are grouped **per OSM edge** and named from OpenStreetMap where the way has a name; because most ways in the study area are unnamed, an unnamed segment reads *“Unnamed road segment”* with its edge id kept as a small tag — never an invented street name. |
+| **Ranking** | Who to reach first, explainable row by row, with household and people totals. Households are numbered **within their tab** (rescue or evacuate), so the row, the detail panel and the map popup agree. |
 | **Why this rank** | The full score breakdown, the confidence value, the route and the bottleneck road. |
 | **Resource allocation** | A suggested greedy split of boats, vehicles and beds across shelters and hospitals. |
 | **SMS check-ins** | A browser-only simulator for safe / help / road-blocked / medical messages, including an offline queue. |
-| **Before / after** | Pin a moment, compare it with another, and see rank shifts and newly isolated households. |
+| **Before / after** | Pin a moment, compare it with another, and see rank shifts and newly isolated households. Rank shifts here use the **overall** order across both tabs, which the column label says. |
 
 ---
 
@@ -296,7 +303,7 @@ npm test          # type-check + run the model test suite (node:test, no extra d
 The tests cover everything in `src/simulation/` plus the data validation: the ETI/status calculation,
 the priority score and confidence, the greedy resource matching, the SMS override and offline-queue
 behaviour, the bottleneck-road grouping, the escalation curve, and every documented
-malformed-input path of the loader. 111 tests, no test dependencies.
+malformed-input path of the loader. 115 tests, no test dependencies.
 
 To deploy, point Vercel or Netlify at the repo — the config is already committed
 ([`vercel.json`](vercel.json), [`netlify.toml`](netlify.toml)): build `npm run build`, output `dist/`.

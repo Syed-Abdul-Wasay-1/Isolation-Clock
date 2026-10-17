@@ -85,12 +85,12 @@ Rendered version: [`architecture.svg`](architecture.svg).
 | **Ranking** | `src/simulation/smsOverrides.ts` | Folds applied SMS overrides into the households and returns the ranked order; also applies SMS message batches (live or replayed from the offline queue). |
 | **SMS state** | `src/simulation/smsCheckins.ts` | The SMS override, check-in and road-block report types, plus the pure helpers that apply and re-point them. |
 | **Allocation** | `src/simulation/resourceMatching.ts` | Greedy priority-first assignment of boats, vehicles and beds across **shelters and hospitals**; records why a household was not assigned. |
-| **Road impact** | `src/simulation/roadImpact.ts` | Groups households by their recorded bottleneck road, counts the dependants, and finds the road segments nearest a household. An impact preview only — it never re-runs routing. |
+| **Road impact** | `src/simulation/roadImpact.ts` | Groups households by their recorded bottleneck road, counts the dependants, labels each group from the OpenStreetMap street name (or *"Unnamed road segment"* when the way has none) and finds the road segments nearest a household. An impact preview only — it never re-runs routing. |
 | **Escalation** | `src/simulation/escalation.ts` | Household and people counts per hour ahead, at the illustrative rise rate. |
 | **Population** | `src/simulation/population.ts` | Household and people counts, with households of unknown size excluded from the people total rather than assumed to be one person. |
 | **Geometry** | `src/simulation/geo.ts` | Straight-line (great-circle) distance, shared by allocation and the road picker. |
 | **Map** | `src/components/IsolationMap.tsx` | Leaflet map of roads and households, road recolouring by scenario level, the unverified road-block overlay and the focused-road highlight, popups and `fitBounds`. Roads are drawn in a handful of style-grouped polylines rather than one layer per segment. |
-| **Ranking UI** | `src/components/RankingPanel.tsx`, `WhyRankPanel.tsx` | The priority list (with household and people totals) and the per-household explanation. |
+| **Ranking UI** | `src/components/RankingPanel.tsx`, `WhyRankPanel.tsx` | The priority list (with household and people totals) and the per-household explanation. Each household is numbered **within its own tab**; the ranked list, the detail panel and the map popup all show that same within-tab number, while the before/after panel is the one cross-tab view and labels its column *"overall priority, both tabs"*. |
 | **Allocation UI** | `src/components/ResourceAllocationPanel.tsx` | Boats/vehicles used, people assigned, and beds consumed per shelter or hospital. |
 | **Road views** | `src/components/EscalationCurvePanel.tsx`, `CriticalRoadsPanel.tsx` | The hour-by-hour escalation curve and the ranked bottleneck roads, each clickable through to the map and the ranking. |
 | **SMS UI** | `src/components/SmsCheckinPanel.tsx` | The browser-only SMS simulator, including the road-block reports and their impact preview. |
@@ -130,6 +130,11 @@ Rendered version: [`architecture.svg`](architecture.svg).
 - **Graceful degradation.** Missing isolation data → an explicit `unknown` status. Missing shelter
   capacity or household size → a documented default, clearly flagged, never silent.
 - **Honesty over polish.** A *scenario simulator*, not a forecast; confidence is always shown.
+- **Accessible.** The scenario slider keeps a visible keyboard focus ring, the ranked tabs follow the
+  WAI-ARIA tab pattern (arrow / Home / End keys), every map marker and control carries an accessible
+  name, and body text is kept at or above the WCAG AA contrast ratio. Primary controls target the
+  44 px touch size. The honesty banner stays pinned on the mobile layout so the framing survives
+  scrolling.
 
 ## What we deliberately have no room for
 

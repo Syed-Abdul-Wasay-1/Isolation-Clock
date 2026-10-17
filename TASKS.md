@@ -29,10 +29,10 @@
 |---|---|
 | Branch | `main` @ `48c1c68` — **ahead of `origin/main` by 1, not pushed yet** |
 | Build / lint / types | ✅ `tsc -b`, `oxlint`, `npm run build` all pass — now with `strict: true` |
-| Tests | ✅ **111 pass** across 22 suites (was 49) — SMS, data loading, road impact and escalation are covered |
+| Tests | ✅ **115 pass** across 23 suites (was 49) — SMS, data loading, road impact and escalation are covered |
 | Docs | ✅ Synced with Part 1 — `methodology`, `SIMULATION`, `ALLOCATION`, `SMS`, `DATA`, `architecture`, `tradeoffs`, `README`, `data/README`, `prompts/context.md` and the four skills |
 | SMS check-in simulator | ✅ Merged, documented in `docs/SMS.md`; road-block reports now drive an impact preview |
-| Prompt log + skills | ✅ `prompts/` complete, 4 repo skills under `.agents/skills/` |
+| Prompt log + skills | ✅ `prompts/` complete; the 4 repo skills + the axe-core a11y skill under `.agents/skills/` |
 | Team roster | ✅ Filled in `README.md` |
 | **Product gaps** | ✅ Closed — road-block preview, critical roads, escalation curve and people counts all ship |
 | **Live deploy** | ❌ Not deployed; no deploy config committed yet (T18, needs an account) |
@@ -113,7 +113,8 @@ deleted (see T10) because version B was not built.
 `bottleneck_road` is precomputed for all 400 households but today is shown for the selected
 household only (`WhyRankPanel.tsx:216`). Aggregate it.
 
-- [x] New panel (`CriticalRoadsPanel.tsx`): group households by `bottleneck_road`; show the road id,
+- [x] New panel (`CriticalRoadsPanel.tsx`): group households by `bottleneck_road`; show the street
+      name where OpenStreetMap has one (else *"Unnamed road segment"* with the edge id as a muted tag),
       the count of households and people that depend on it, and the safe place(s) it serves.
 - [x] Sort by households descending; clicking a row highlights that road on the map. The "scroll the
       ranking to its top household" part is implemented as an **"Open top household"** button inside
@@ -268,7 +269,8 @@ one shipped (hospital allocation), three consciously left in the post-deadline b
 - [x] Update `docs/README.md`'s index for any new doc, and `README.md`'s feature list — a new
       "What's in the app" table was added, and the structure tree and folder table were refreshed.
 - [x] Grep the whole repo for any figure you changed (counts, max score 95, `rise_rate_default`) and
-      make the numbers agree: 400 households, 1,043 people, 4,958 segments, 111 tests.
+      make the numbers agree: 400 households, 1,043 people, 4,958 segments, tests (111 at the time;
+      115 now — see the status table above).
 - [x] One `prompts/prompts.md` entry per Part 1 task, each with `Model:` and `Done by:` filled in.
 
 Two extra drift fixes found while syncing:
@@ -340,10 +342,12 @@ two external links is done; those two arrive with T18 and T20.
 ## T16 · Repo size check
 **Est:** 20 min · **Done by:** Syed Abdul Wasay
 
-- [x] `data/*.graphml` (~2.0 MB), the `data/*.geojson` inputs and `cache/*.json` are committed so the
-      pipeline is reproducible offline — **confirmed still intended**, and now documented: every
-      committed input file is listed with its size in `data/README.md`, in a new "What is actually
-      committed under `data/`" table.
+- [x] `data/*.graphml` (~2.0 MB) and the `data/*.geojson` inputs are committed so the pipeline is
+      reproducible offline — **confirmed still intended**, and documented: every committed input file
+      is listed with its size in `data/README.md`, in a new "What is actually committed under `data/`"
+      table. A root-level `cache/` of five raw Overpass responses (two of them empty, ~171 KB) was
+      **removed** afterwards: nothing in the repo ever read it — both scripts cache into `data/` and
+      `public/data/`.
 - [x] Confirm `.gitignore` still keeps large raw inputs out while force-keeping `public/data/*.json`.
       It does. Two additions were needed while checking: `__pycache__/` and `*.pyc` were **not**
       ignored, and `scripts/__pycache__/generate_data.cpython-315.pyc` was committed — a stale
@@ -351,8 +355,9 @@ two external links is done; those two arrive with T18 and T20.
 - [x] If T1 option B shipped, size the new `data/road_graph.json` and confirm it is acceptable. **Not
       applicable** — option B did not ship, so there is no `road_graph.json`.
 
-Sizes measured: working tree under 4 MB, `.git` 1.1 MB, largest file `public/data/roads.json` at
-1.15 MB. No file needs Git LFS.
+Sizes measured after the cleanup pass (excluding `node_modules/`, `.git/` and `dist/`): working tree
+4.24 MB in 100 files, `.git` 2.02 MB, largest file `data/roads_27_688_…graphml` at 2.0 MB, then
+`public/data/roads.json` at 1.13 MB. No file needs Git LFS.
 
 **Done when:** `data/README.md` explains every committed data file. ✅
 
@@ -466,9 +471,10 @@ Consciously not built. `AGENTS.md` says the docs must not claim them until they 
 - [ ] **Config surface.** Expose weights and thresholds as a settings panel instead of constants.
 - [ ] **Sensitivity view.** A ±margin re-rank around the scenario level (T9). `AGENTS.md` §2 asserts
       there is no sensitivity band, so this needs that rule changed first.
-- [ ] **Regenerate `public/data`** with the fixed `bottleneck_road` / `bottleneck_road_name` split so
-      all 400 households have a locatable bottleneck edge (112 currently carry a street name instead).
-      Needs Python with `osmnx` / `networkx` / `geopandas`.
+- [x] **Regenerate `public/data`** with the fixed `bottleneck_road` / `bottleneck_road_name` split so
+      all 400 households have a locatable bottleneck edge. Done Oct 2026: `isolation_level`,
+      `nearest_safe_place_id`, `road_node_id` and every road threshold reproduced exactly; all 387
+      routed households now carry an edge id, 112 of them with a street name.
 
 ---
 

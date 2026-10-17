@@ -37,4 +37,11 @@ simulating trips or shared rides.
 
 The frontend can pin a scenario level with its full household ranking, scores, and resource
 assignments, then compare those results with a different level to show rank shifts, newly isolated
-households, and boat or vehicle assignment changes.
+households, and boat or vehicle assignment changes. Those rank shifts are taken from the **overall**
+order (both the rescue and evacuate tabs together), which the before/after panel labels *"overall
+priority, both tabs"*; the ranking list and detail panel instead number households **within their own
+tab** (see [`methodology.md`](methodology.md) §5).
+
+The boats / vehicles / bed-multiplier inputs accept only a non-negative number: a negative, empty or
+non-numeric value is rejected and the previous value is kept, and a decimal is rounded down — the
+panel states both, rather than silently snapping the field back.

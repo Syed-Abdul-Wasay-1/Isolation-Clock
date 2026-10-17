@@ -55,6 +55,32 @@ const householdStatusLabels: Record<HouseholdStatus, string> = {
   unknown: 'Route unknown',
 }
 
+const safePlaceGlyphs = { shelter: '⌂', hospital: '+' } as const
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/**
+ * Leaflet renders a marker icon as `role="button"` with `tabindex="0"`, so the icon needs an
+ * accessible name of its own: the glyph is hidden from assistive tech and a visually hidden label
+ * carries the shelter / hospital name instead.
+ */
+function makeSafePlaceIcon(kind: 'shelter' | 'hospital', label: string) {
+  return divIcon({
+    className: `safe-place-icon ${kind}-icon`,
+    html:
+      `<span class="safe-place-glyph" aria-hidden="true">${safePlaceGlyphs[kind]}</span>` +
+      `<span class="sr-only">${escapeHtml(label)}</span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  })
+}
+
 function FitMapToData({ boundingBox }: { boundingBox: BoundingBox }) {
   const map = useMap()
   const bounds = useMemo(
@@ -72,19 +98,6 @@ function FitMapToData({ boundingBox }: { boundingBox: BoundingBox }) {
 
   return null
 }
-
-const shelterIcon = divIcon({
-  className: 'safe-place-icon shelter-icon',
-  html: '<span aria-hidden="true">⌂</span>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-})
-const hospitalIcon = divIcon({
-  className: 'safe-place-icon hospital-icon',
-  html: '<span aria-hidden="true">+</span>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-})
 
 function toRoadPositions(feature: RoadFeature): [number, number][] {
   return feature.geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])
@@ -153,6 +166,16 @@ export function IsolationMap({
     () => buildRoadClusters(roads, scenarioLevel, previewClosedEdgeIds, focusedEdgeId),
     [roads, scenarioLevel, previewClosedEdgeIds, focusedEdgeId],
   )
+  const safePlaceIcons = useMemo(() => {
+    const icons = new Map<string, ReturnType<typeof divIcon>>()
+    for (const shelter of shelters) {
+      icons.set(shelter.id, makeSafePlaceIcon('shelter', `${shelter.name || shelter.id} · Shelter`))
+    }
+    for (const hospital of hospitals) {
+      icons.set(hospital.id, makeSafePlaceIcon('hospital', `${hospital.name || hospital.id} · Hospital`))
+    }
+    return icons
+  }, [shelters, hospitals])
 
   return (
     <div className="map-frame">
@@ -199,7 +222,7 @@ export function IsolationMap({
           <Marker
             key={shelter.id}
             position={[shelter.lat, shelter.lon]}
-            icon={shelterIcon}
+            icon={safePlaceIcons.get(shelter.id)}
           >
             <Tooltip>{shelter.name || shelter.id} · Shelter</Tooltip>
           </Marker>
@@ -208,7 +231,7 @@ export function IsolationMap({
           <Marker
             key={hospital.id}
             position={[hospital.lat, hospital.lon]}
-            icon={hospitalIcon}
+            icon={safePlaceIcons.get(hospital.id)}
           >
             <Tooltip>{hospital.name || hospital.id} · Hospital</Tooltip>
           </Marker>

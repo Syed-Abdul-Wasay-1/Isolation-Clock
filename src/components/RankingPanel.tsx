@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { formatEti } from '../simulation/householdStatus'
 import { compareHouseholdIds } from '../simulation/householdStatus'
 import type { PeopleCount } from '../simulation/population'
@@ -28,7 +28,8 @@ interface RankingPanelProps {
   totalPeople: PeopleCount
   activeIsolatedPeople: PeopleCount
   selectedHouseholdId: string | null
-  priorityRankByHousehold: Map<string, number>
+  /** Priority rank inside the household's own tab (rescue or evacuate). */
+  priorityRankInTab: Map<string, number>
   activeTab: RankingTab
   onTabChange: (tab: RankingTab) => void
   onSelectHousehold: (householdId: string) => void
@@ -46,7 +47,7 @@ export function RankingPanel({
   totalPeople,
   activeIsolatedPeople,
   selectedHouseholdId,
-  priorityRankByHousehold,
+  priorityRankInTab,
   activeTab,
   onTabChange,
   onSelectHousehold,
@@ -55,6 +56,40 @@ export function RankingPanel({
   onSortChange,
 }: RankingPanelProps) {
   const [showAll, setShowAll] = useState(false)
+  const rescueTabRef = useRef<HTMLButtonElement | null>(null)
+  const evacuateTabRef = useRef<HTMLButtonElement | null>(null)
+  const tabOrder: RankingTab[] = ['rescue', 'evacuate']
+
+  /** WAI-ARIA tab pattern: arrow keys move both the selection and the focus. */
+  function handleTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const current = tabOrder.indexOf(activeTab)
+    const select = (tab: RankingTab) => {
+      onTabChange(tab)
+      const ref = tab === 'rescue' ? rescueTabRef : evacuateTabRef
+      ref.current?.focus()
+    }
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault()
+        select(tabOrder[(current - 1 + tabOrder.length) % tabOrder.length])
+        break
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault()
+        select(tabOrder[(current + 1) % tabOrder.length])
+        break
+      case 'Home':
+        event.preventDefault()
+        select(tabOrder[0])
+        break
+      case 'End':
+        event.preventDefault()
+        select(tabOrder[tabOrder.length - 1])
+        break
+    }
+  }
+
   const households = [...(activeTab === 'rescue' ? isolatedHouseholds : evacuateHouseholds)]
   households.sort((first, second) => {
     switch (sortBy) {
@@ -93,25 +128,34 @@ export function RankingPanel({
           </span>
         </div>
       </div>
-      <div className="ranking-tabs" role="tablist" aria-label="Household priority group">
+      <div
+        className="ranking-tabs"
+        role="tablist"
+        aria-label="Household priority group"
+        onKeyDown={handleTabKeyDown}
+      >
         <button
           id="tab-rescue"
+          ref={rescueTabRef}
           className={`ranking-tab${activeTab === 'rescue' ? ' is-active' : ''}`}
           type="button"
           role="tab"
           aria-selected={activeTab === 'rescue'}
           aria-controls="ranking-list"
+          tabIndex={activeTab === 'rescue' ? 0 : -1}
           onClick={() => onTabChange('rescue')}
         >
           Needs rescue now <span>{isolatedHouseholds.length}</span>
         </button>
         <button
           id="tab-evacuate"
+          ref={evacuateTabRef}
           className={`ranking-tab${activeTab === 'evacuate' ? ' is-active' : ''}`}
           type="button"
           role="tab"
           aria-selected={activeTab === 'evacuate'}
           aria-controls="ranking-list"
+          tabIndex={activeTab === 'evacuate' ? 0 : -1}
           onClick={() => onTabChange('evacuate')}
         >
           Evacuate before cut-off <span>{evacuateHouseholds.length}</span>
@@ -167,9 +211,9 @@ export function RankingPanel({
             type="button"
             onClick={() => onSelectHousehold(scenario.household.id)}
           >
-            <span className="rank-number">
-              {priorityRankByHousehold.has(scenario.household.id)
-                ? String(priorityRankByHousehold.get(scenario.household.id)).padStart(2, '0')
+            <span className="rank-number" title="Priority rank in this tab">
+              {priorityRankInTab.has(scenario.household.id)
+                ? String(priorityRankInTab.get(scenario.household.id)).padStart(2, '0')
                 : '–'}
             </span>
             <span className={`status-dot status-${scenario.status}`} />
