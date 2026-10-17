@@ -292,6 +292,26 @@ weights, resource rules, UX and the pitch.
   `docs/SMS.md` and added four tests for the SMS scoring. Gates: `tsc`, `oxlint`, `build` and
   49/49 tests pass. No commit was made.
 
+### 2026-10-17 - Rewrite TASKS.md as a single ordered run - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Goal:** The task file had drifted and was organised by theme, so it did not say what to do first.
+  Rewrite it as one ordered list: product work first, submission last.
+- **Prompt:**
+  > *"fix task md in it properly tell what to do like start from the first one to the last one
+  > submission are the last i want to add all the new stuff and then after adding all the new stuff
+  > then i do submission."*
+- **Outcome:** Replaced `TASKS.md` with a strict T1–T22 sequence in six parts — Part 1 product work
+  (close the loop on road-block reports, critical-roads panel, escalation curve, people-not-households,
+  the missing SMS and data-loader tests, map performance, docs sync), Part 2 artifacts, Part 3 repo
+  hygiene, Part 4 deploy, Part 5 video, Part 6 submission last. Added a status snapshot corrected to
+  `5f9b5d7` / 49 tests, an owner per task, a budget and cut list, a "done when" per task, and a
+  post-deadline backlog. Kept the honesty constraints explicit: the road-close task is specified as an
+  *impact preview* built from the precomputed `bottleneck_road` and must not claim the ETI changed,
+  unless the stretch option ships the road graph and recomputes it properly. Also flagged that the
+  app cannot recompute isolation client-side today because only edge geometries and thresholds are
+  shipped, not the graph. Doc-only change; no code or model touched.
+
 ---
 
 ## Corrections to earlier drafts
