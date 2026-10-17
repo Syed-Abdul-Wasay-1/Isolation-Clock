@@ -76,6 +76,7 @@ This project is **frontend-only by design**. There is no server, no database and
 ```text
 Isolation Clock/
 ├── README.md            # This file
+├── TASKS.md             # Remaining work, split across the three team members
 ├── AGENTS.md            # Instructions an AI agent reads first (loaded automatically)
 ├── .gitignore
 ├── LICENSE

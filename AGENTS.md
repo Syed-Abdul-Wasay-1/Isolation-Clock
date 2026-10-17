@@ -32,8 +32,9 @@ how long before every road out of a household is closed and it can no longer be 
 ## 3. Read order before you code
 
 1. This file.
-2. `prompts/context.md` — the one-page model primer (units, formulas, file shapes).
-3. The spec that matches your task:
+2. `TASKS.md` — what is left to do and who owns which part.
+3. `prompts/context.md` — the one-page model primer (units, formulas, file shapes).
+4. The spec that matches your task:
    - `docs/SIMULATION.md` — road thresholds / exposure index
    - `docs/SCORING.md` — priority score + confidence
    - `docs/ALLOCATION.md` — boat / vehicle / bed assignment

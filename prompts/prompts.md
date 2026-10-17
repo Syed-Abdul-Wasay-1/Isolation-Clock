@@ -253,6 +253,24 @@ weights, resource rules, UX and the pitch.
   `./priorityScore.ts` with the extension so Node can resolve it (TypeScript already allows
   `.ts` imports here).
 
+### 2026-10-17 - Create the remaining-work task file for three people - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Goal:** After merging `wasay` into `main`, capture everything still outstanding as a single,
+  properly organised task file split across the three team members.
+- **Prompt:**
+  > *"I changed to main branch. Can you create me a task file with all the stuff we have to do now,
+  > mentioned properly - first do deep research, then create it. There are three people working on
+  > this code."*
+- **Outcome:** Researched the event brief (`docs/event-brief.md`: deadline 18 Oct 22:00 PKT, judging
+  weights, submission checklist), audited the repo for real gaps (no deploy config, missing
+  `docs/architecture.png`, empty `screenshots/`, no demo video, stale `ameena` branch, empty
+  placeholder folders, committed `cache/`) and checked every relative doc link before writing.
+  Created `TASKS.md`: a status snapshot, an owner table that keeps each person inside their own files
+  (`README.md`-style roles: Lead, Simulation & Routing, Frontend / UX), P0-P3 priority tags, and
+  14 tasks with steps and "done when" criteria plus a T-1-day timing plan. Linked it from `AGENTS.md`
+  (read order) and the README project tree.
+
 ---
 
 ## Corrections to earlier drafts
