@@ -34,7 +34,9 @@
 | Isolation level | Widest-path (maximin) level at which the last route closes | Per-minute simulation of the rising level | The monotonic assumption makes the widest-path level equivalent and far faster. |
 | Routing | A nearest-*open* safe place, precomputed offline in Python | In-browser graph search | The graph math belongs offline; the browser only needs the result. |
 | Ranking | Explainable priority score + confidence | Statistical uncertainty bands | Fast, explainable, and honest about what it is. |
-| Allocation | A greedy boat / vehicle / bed **suggestion** | Globally optimal dispatch | Scope, and the coordinator keeps control; labelled as a suggestion, not dispatch. |
+| Allocation | A greedy boat / vehicle / bed **suggestion** across shelters **and** hospitals | Globally optimal dispatch | Scope, and the coordinator keeps control; labelled as a suggestion, not dispatch. |
+| Road-block reports | An **impact preview** from the precomputed bottleneck road | Re-running the widest-path search when a road is reported closed | The app ships road geometry and thresholds, **not the graph**, so it cannot re-route in the browser. The preview is labelled as a preview, never as a closed road. |
+| Household totals | Households **and** people | A single household count | A household of six is not the same as a household of one; the people count is what a coordinator actually needs. |
 | Delivery | Static client-side app | Backend API / database | Only static hosting (Vercel/Netlify) is available. |
 | Offline | Served statically, browser-cacheable | A service worker + precomputed snapshot tier | Extra build tooling for a benefit the demo doesn't need; the limitation is stated openly. |
 | Hazards | Flood only | Heatwave, fire, etc. | The problem allows one slice; flood best fits the core idea. |
@@ -52,6 +54,13 @@
    broken into its factors.
 5. **Explainable rows.** Every household shows *why*: the safe place, the bottleneck road and the
    contributing factors. Trust comes from traceability, not from a score.
+6. **Group the map layers, don't multiply them.** Roads are drawn as a handful of style-grouped
+   polylines instead of one Leaflet layer per segment. The colours are identical; the work per
+   playback tick is not — one layer update per style group instead of ~4,958, measured at ~0.15 ms
+   of classification per pass on the shipped 4,958-segment dataset.
+7. **Say what the model cannot do.** Hospital beds are allocatable because the isolation model
+   already routes households to hospitals — but medical-need households are *not* given hospital
+   priority, because that is a policy call the model should not make silently.
 
 ## Known limitations we own
 
@@ -62,6 +71,15 @@
 - Resource matching is a greedy suggestion using straight-line distance — not dispatch, and not a
   globally optimal matching.
 - There is no explicit offline mode (no service worker or precomputed snapshot tier).
+- **The app cannot re-route.** Because only thresholds are shipped, not the road graph, a reported
+  road closure can only ever be an impact preview against the precomputed bottleneck road.
+- **112 of the 400 shipped households record their bottleneck road as an OpenStreetMap street name,
+  not an edge id**, so those roads are listed but cannot be located on the map. A regeneration of the
+  offline pipeline with `bottleneck_road` normalised to edge ids (and the street name kept in a
+  separate field) would fix this; the pipeline has been changed, the data has not been regenerated.
+- The playback frame cost was reduced structurally and measured in Node, but the browser frame
+  timings could not be captured in the environment this was built in. The numbers to reproduce are in
+  the T8 task entry.
 
 ## Why this is still worth shipping
 

@@ -41,7 +41,8 @@ worker that does not exist.
 
 | Doc claim that would be wrong | Actual fact |
 |---|---|
-| A **Web Worker** runs the ETI sweep | No worker; `src/workers/` holds only `.gitkeep`. The graph work is precomputed in Python; the browser does per-household arithmetic on the main thread. |
+| A **Web Worker** runs the ETI sweep | No worker, and no `src/workers/` folder — it was deleted. The graph work is precomputed in Python; the browser does per-household arithmetic on the main thread. |
+| A reported road closure is **re-simulated** | No. Only geometry and thresholds are shipped, not the graph. A report drives an impact preview against the precomputed `bottleneck_road`; no `isolation_level` or ETI changes. |
 | **Offline snapshots** at +10/+20/+30 | Not built. The app loads five static JSON files and is online-only (no service worker). |
 | A **sensitivity band** / fragile flag | Not built. Only the confidence value is shown. |
 | Road **tolerance ~0.30 m** | No depth tolerance. Closure is a threshold on a 0–100 relative exposure percentile index. |

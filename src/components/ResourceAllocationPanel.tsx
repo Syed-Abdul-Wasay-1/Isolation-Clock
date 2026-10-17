@@ -16,6 +16,15 @@ export function ResourceAllocationPanel({
   config,
   onConfigChange,
 }: ResourceAllocationPanelProps) {
+  const assignedPeople = Array.from(allocation.assignments.values()).reduce(
+    (sum, assignment) => sum + assignment.householdSize,
+    0,
+  )
+  const unassignedPeople = allocation.unassigned.reduce(
+    (sum, item) => sum + item.householdSize,
+    0,
+  )
+
   return (
     <section className="allocation-panel" aria-labelledby="allocation-title">
       <div className="allocation-heading">
@@ -64,23 +73,27 @@ export function ResourceAllocationPanel({
       <div className="allocation-totals">
         <div><strong>{allocation.usedBoats}</strong><span>boats used / {config.boats}</span></div>
         <div><strong>{allocation.usedVehicles}</strong><span>vehicles used / {config.vehicles}</span></div>
-        <div><strong>{allocation.unassigned.length}</strong><span>unassigned</span></div>
+        <div><strong>{assignedPeople}</strong><span>people assigned</span></div>
+        <div>
+          <strong>{allocation.unassigned.length}</strong>
+          <span>households unassigned · {unassignedPeople} people</span>
+        </div>
       </div>
       <div className="allocation-beds">
-        <strong>Beds used per shelter</strong>
-        {Array.from(allocation.bedsUsedByShelter, ([shelterId, bedsUsed]) => (
-          <div key={shelterId}>
-            <span>{shelterId}</span>
+        <strong>Beds used per shelter / hospital</strong>
+        {Array.from(allocation.bedsUsedByDestination, ([destinationId, bedsUsed]) => (
+          <div key={destinationId}>
+            <span>{destinationId}</span>
             <span>
-              {bedsUsed} / {allocation.bedCapacityByShelter.get(shelterId) ?? 0}
+              {bedsUsed} / {allocation.bedCapacityByDestination.get(destinationId) ?? 0}
             </span>
           </div>
         ))}
       </div>
-      {allocation.sheltersUsingDefaultCapacity.length > 0 && (
+      {allocation.destinationsUsingDefaultCapacity.length > 0 && (
         <p className="allocation-note">
-          Missing shelter capacity for {allocation.sheltersUsingDefaultCapacity.join(', ')};
-          assuming {config.defaultShelterCapacity} beds per shelter before the multiplier.
+          Missing capacity for {allocation.destinationsUsingDefaultCapacity.join(', ')};
+          assuming {config.defaultShelterCapacity} beds per safe place before the multiplier.
         </p>
       )}
       {allocation.assumedHouseholdSizeCount > 0 && (
@@ -91,7 +104,7 @@ export function ResourceAllocationPanel({
       )}
       <p className="allocation-note">
         Boats carry up to {config.boatCapacity} people and vehicles up to {config.vehicleCapacity}.
-        Shelter assignment uses straight-line distance, not road routes.
+        Shelter and hospital assignment uses straight-line distance, not road routes.
       </p>
       <div className="unassigned-list">
         <strong>First 10 unassigned households</strong>

@@ -17,6 +17,7 @@ interface SnapshotAssignment {
 export interface PinnedScenarioSnapshot {
   level: number
   isolatedCount: number
+  isolatedPeople: number
   rankedHouseholds: SnapshotRankedHousehold[]
   assignments: SnapshotAssignment[]
 }
@@ -25,6 +26,7 @@ interface BeforeAfterPanelProps {
   snapshot: PinnedScenarioSnapshot
   currentLevel: number
   currentIsolatedCount: number
+  currentIsolatedPeople: number
   rankedHouseholds: RankedHousehold[]
   allocation: ResourceAllocation
 }
@@ -33,6 +35,7 @@ export function BeforeAfterPanel({
   snapshot,
   currentLevel,
   currentIsolatedCount,
+  currentIsolatedPeople,
   rankedHouseholds,
   allocation,
 }: BeforeAfterPanelProps) {
@@ -77,10 +80,11 @@ export function BeforeAfterPanel({
     ? allocation.assignments.get(topHousehold.scenario.household.id)
     : undefined
   const isolatedDifference = currentIsolatedCount - snapshot.isolatedCount
+  const isolatedPeopleDifference = currentIsolatedPeople - snapshot.isolatedPeople
   const isolatedChangeText = isolatedDifference > 0
-    ? `${isolatedDifference} more households were cut off`
+    ? `${isolatedDifference} more households (${isolatedPeopleDifference} more people) were cut off`
     : isolatedDifference < 0
-      ? `${Math.abs(isolatedDifference)} fewer households are isolated`
+      ? `${Math.abs(isolatedDifference)} fewer households (${Math.abs(isolatedPeopleDifference)} fewer people) are isolated`
       : 'the same number of households are isolated'
   const topMovementText = topHousehold
     ? previousTopRank === undefined
@@ -103,8 +107,14 @@ export function BeforeAfterPanel({
         <strong>Level {snapshot.level} → {currentLevel}</strong>
       </div>
       <div className="comparison-counts">
-        <span>Isolated before <strong>{snapshot.isolatedCount}</strong></span>
-        <span>Isolated after <strong>{currentIsolatedCount}</strong></span>
+        <span>
+          Isolated before <strong>{snapshot.isolatedCount}</strong> households ·{' '}
+          <strong>{snapshot.isolatedPeople}</strong> people
+        </span>
+        <span>
+          Isolated after <strong>{currentIsolatedCount}</strong> households ·{' '}
+          <strong>{currentIsolatedPeople}</strong> people
+        </span>
       </div>
       <p className="comparison-summary">{summary}</p>
 

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { compareHouseholdIds } from '../simulation/householdStatus'
+import { formatPeopleCount } from '../simulation/population'
+import type { BottleneckRoadGroup, RoadEdgeOption } from '../simulation/roadImpact'
 import type {
   RoadBlockReport,
   SmsCheckinRecord,
@@ -7,16 +9,28 @@ import type {
 } from '../simulation/smsCheckins'
 import type { RankedHousehold } from './RankingPanel'
 
+/** A road-block report plus everything the panel needs to explain its impact preview. */
+export interface RoadBlockReportView {
+  report: RoadBlockReport
+  /** Households that record this edge as their bottleneck, or null when the edge is unknown. */
+  dependants: BottleneckRoadGroup | null
+  /** Nearby road segments the report can be re-pointed at. */
+  edgeOptions: RoadEdgeOption[]
+}
+
 interface SmsCheckinPanelProps {
   rankedHouseholds: RankedHousehold[]
   selectedHouseholdId: string
   onHouseholdChange: (householdId: string) => void
   records: SmsCheckinRecord[]
   pendingMessages: SmsQueuedMessage[]
-  roadBlockReports: RoadBlockReport[]
+  roadBlocks: RoadBlockReportView[]
   offlineMode: boolean
   onOfflineModeChange: (enabled: boolean) => void
   onSend: (message: SmsQueuedMessage) => void
+  focusedEdgeId: string | null
+  onFocusRoad: (edgeId: string | null) => void
+  onRoadBlockEdgeChange: (report: RoadBlockReport, edgeId: string | null) => void
 }
 
 function formatTime(timestamp: string): string {
@@ -32,10 +46,13 @@ export function SmsCheckinPanel({
   onHouseholdChange,
   records,
   pendingMessages,
-  roadBlockReports,
+  roadBlocks,
   offlineMode,
   onOfflineModeChange,
   onSend,
+  focusedEdgeId,
+  onFocusRoad,
+  onRoadBlockEdgeChange,
 }: SmsCheckinPanelProps) {
   const [freeText, setFreeText] = useState('')
   const [messageSequence, setMessageSequence] = useState(0)
@@ -178,18 +195,71 @@ export function SmsCheckinPanel({
       </form>
       <div className="road-report-list">
         <h3>Road-block reports · unverified</h3>
-        {roadBlockReports.length === 0 ? (
+        {roadBlocks.length === 0 ? (
           <p>No road-block reports yet.</p>
         ) : (
           <ul>
-            {roadBlockReports.map((report) => (
-              <li key={report.id}>
-                <strong>{report.householdId}</strong>
-                <span>Unverified · {formatTime(report.timestamp)}</span>
-              </li>
-            ))}
+            {roadBlocks.map(({ report, dependants, edgeOptions }) => {
+              const isFocused = focusedEdgeId !== null && focusedEdgeId === report.edgeId
+              return (
+                <li key={report.id}>
+                  <div className="road-report-head">
+                    <strong>{report.householdId}</strong>
+                    <span>Unverified · {formatTime(report.timestamp)}</span>
+                  </div>
+                  <label className="road-report-edge">
+                    Reported road
+                    <select
+                      value={report.edgeId ?? ''}
+                      onChange={(event) =>
+                        onRoadBlockEdgeChange(report, event.currentTarget.value || null)
+                      }
+                    >
+                      <option value="">Not located in the road data</option>
+                      {edgeOptions.map((option) => (
+                        <option key={option.edgeId} value={option.edgeId}>
+                          {option.edgeId} · {option.distanceKm.toFixed(2)} km · closes at level{' '}
+                          {option.threshold.toFixed(0)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {dependants ? (
+                    <p className="road-report-impact">
+                      Closing this road breaks the best modelled route for{' '}
+                      <strong>{dependants.households.length}</strong> households ·{' '}
+                      {formatPeopleCount(dependants.people)}
+                      {dependants.isolatedHouseholds > 0 &&
+                        ` (${dependants.isolatedHouseholds} already isolated)`}
+                      .
+                    </p>
+                  ) : (
+                    <p className="road-report-impact">
+                      {report.edgeId
+                        ? 'This road is not in the shipped road data, so it is not drawn.'
+                        : 'No road selected yet, so there is no impact preview to show.'}
+                    </p>
+                  )}
+                  <div className="road-report-actions">
+                    <button
+                      type="button"
+                      disabled={!report.edgeId}
+                      onClick={() => onFocusRoad(isFocused ? null : report.edgeId)}
+                    >
+                      {isFocused ? 'Stop highlighting' : 'Highlight dependants'}
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
+        <p className="road-report-note">
+          <strong>Impact preview, not a re-simulation.</strong> An unverified report never changes a
+          household&rsquo;s isolation level or ETI. The preview only counts the households that
+          recorded this road as their bottleneck, and it cannot know about routes the offline
+          pipeline never enumerated.
+        </p>
       </div>
     </section>
   )

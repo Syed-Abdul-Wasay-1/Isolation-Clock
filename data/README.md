@@ -8,14 +8,29 @@ the browser actually loads.
 
 | Location | Role | Committed? |
 |---|---|---|
-| `data/` (this folder) | Raw/source inputs and this documentation. Consumed by `scripts/`. | Large inputs are gitignored. |
-| `public/data/` | The **precomputed JSON that ships with the app** and is fetched in the browser. | Yes — small, static. |
+| `data/` (this folder) | Offline source inputs and this documentation. Consumed by `scripts/`. | Yes — the inputs are small and are kept so the pipeline stays reproducible |
+| `public/data/` | The **precomputed JSON that ships with the app** and is fetched in the browser. | Yes — small, static |
+| `cache/` (repo root) | Raw Overpass responses, keyed by request hash, so a re-run does not hit the network again. | Yes |
+| Large raw exports (`*.osm`, `*.pbf`, `*.tif`, `*.gpkg`, `*.shp`) | Downloadable again at will. | **No** — gitignored |
 
 Flow:
 
 ```
 data/ (raw inputs)  ──►  scripts/ (run once, offline)  ──►  public/data/*.json  ──►  browser
 ```
+
+## What is actually committed under `data/`
+
+| File | Size | What it is |
+|---|---|---|
+| `roads_27_688_27_711_68_838_68_883.graphml` | ~2.0 MB | The OpenStreetMap road graph for the study area, as loaded by the pipeline. Keeping it means the isolation levels can be recomputed offline without re-querying Overpass. |
+| `buildings_27_688_27_711_68_838_68_883.geojson` | ~97 KB | OSM building footprints, used to place synthetic households. |
+| `water_27_688_27_711_68_838_68_883.geojson` | ~66 KB | Water bodies, used for the distance-to-water part of the exposure score. |
+| `elevations_27_688_27_711_68_838_68_883.json` | ~38 KB | The sampled elevation grid for the study area. |
+| `amenities_27_688_27_711_68_838_68_883.geojson` | ~29 KB | OSM amenities (schools, mosques, clinics) that seed the shelter and hospital lists. |
+
+Total committed working tree is under 4 MB, of which the only large file is the 1.15 MB
+`public/data/roads.json` the browser actually loads. No file here needs Git LFS.
 
 ## What the datasets are
 
@@ -25,6 +40,28 @@ data/ (raw inputs)  ──►  scripts/ (run once, offline)  ──►  public/d
 | **Shelters & hospitals** | Destination points with a location, a name and a bed/patient capacity. |
 | **Road network** | The study-area road network as GeoJSON, with a per-edge scenario threshold derived from node exposure. Built from OpenStreetMap; a synthetic grid is used only if the OSM query returns too few roads. |
 | **Isolation levels** | Per household: the widest-path level at which its last route to a safe place closes, plus the safe place and bottleneck road for that route. |
+
+### Isolation fields, and the one caveat in the committed file
+
+`public/data/isolation.json` stores, per household:
+
+| Field | Meaning |
+|---|---|
+| `isolation_level` | The widest-path (maximin) level at which the last route to a shelter or hospital closes. `null` when no route exists. |
+| `nearest_safe_place_id` | The shelter or hospital on that best route. |
+| `bottleneck_road` | The lowest-threshold edge on that best route — the road to watch. |
+
+**Caveat.** In the committed dataset, `bottleneck_road` holds either a road **edge id** (e.g.
+`4011856400-4011856423-0`) or, for **112 of the 400 households**, an OpenStreetMap **street name**
+(e.g. `Cinema Road`). The original pipeline preferred the street name when the edge had one, and a
+name cannot be matched against `roads.json`, which ships edge ids only. Those 112 households are
+therefore listed but cannot be highlighted on the map.
+
+`scripts/build_isolation_clock.py` has since been changed to always write the edge id to
+`bottleneck_road` and the street name to a new `bottleneck_road_name` field. **The data has not been
+regenerated**, so the committed file still has the old shape. Regenerating needs Python with
+`osmnx` / `networkx` / `geopandas`; see [`../scripts/README.md`](../scripts/README.md). The app reads
+both shapes.
 
 ## How the synthetic data is generated
 

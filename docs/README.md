@@ -18,6 +18,13 @@ material we were given.
 | [`risks.md`](risks.md) | Model, data, runtime, platform and UX risks + mitigations |
 | [`tradeoffs.md`](tradeoffs.md) | What we built, what we cut, and why |
 
+## Diagrams
+
+| Asset | What's inside |
+|---|---|
+| [`architecture.svg`](architecture.svg) | The system diagram, as a diffable vector file |
+| [`architecture.png`](architecture.png) | The same diagram, rasterised at 2× for slides and the README |
+
 ## Source material
 
 The original inputs this project was built from.
@@ -27,8 +34,3 @@ The original inputs this project was built from.
 | [`idea.md`](idea.md) | The product idea — the core concept and its nine points |
 | [`problem-statement.md`](problem-statement.md) | The official hackathon brief (Problem 01, Disaster Response) |
 | [`event-brief.md`](event-brief.md) | Full event reference: rules, judging, timeline, prizes, checklist |
-
-## To do
-
-- [ ] Render the system diagram from [`architecture.md`](architecture.md) as `docs/architecture.png`
-      for the README and the pitch deck.

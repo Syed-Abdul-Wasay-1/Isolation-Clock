@@ -25,3 +25,12 @@ forecast.
 The `config.rise_rate_default` value in `public/data/isolation.json` is **10 index points per
 hour (illustrative scenario setting)**. It is not inferred from local rainfall or
 hydrological measurements and must not be interpreted as a predicted rate of rise.
+
+## Road-block reports do not change the model
+
+A **road-block report** from the SMS panel (message `3`) does not change any threshold, any
+`isolation_level` or any ETI. The app ships road geometry and thresholds only — **not the road
+graph** — so it cannot re-run routing in the browser. A report is drawn as a dashed *reported
+blocked* segment and shows an **impact preview**: the households that recorded that road as the
+bottleneck of their best modelled route. It is never presented as a closed road, and the ETI
+countdowns do not move. See [`SMS.md`](SMS.md).

@@ -50,18 +50,31 @@ describe('matchResources', () => {
       [NEAR],
     )
 
-    assert.equal(allocation.bedsUsedByShelter.get(NEAR.id), 4)
-    assert.equal(allocation.bedCapacityByShelter.get(NEAR.id), 40)
+    assert.equal(allocation.bedsUsedByDestination.get(NEAR.id), 4)
+    assert.equal(allocation.bedCapacityByDestination.get(NEAR.id), 40)
   })
 
-  test('assigns the closest shelter with enough remaining beds', () => {
+  test('assigns the closest safe place with enough remaining beds', () => {
     const allocation = matchResources(
       [scenario({ id: 'a' }, 'safe', 5)],
       DEFAULT_RESOURCE_CONFIG,
       [FAR, NEAR],
     )
 
-    assert.equal(allocation.assignments.get('a')?.shelter.id, NEAR.id)
+    assert.equal(allocation.assignments.get('a')?.destination.id, NEAR.id)
+  })
+
+  test('accepts a hospital as a destination', () => {
+    const hospital = shelter({ id: 'HOSP1', name: 'Hospital 1', kind: 'hospital' })
+    const allocation = matchResources(
+      [scenario({ id: 'a' }, 'safe', 5)],
+      DEFAULT_RESOURCE_CONFIG,
+      [hospital],
+    )
+
+    assert.equal(allocation.assignments.get('a')?.destination.id, 'HOSP1')
+    assert.equal(allocation.assignments.get('a')?.destination.kind, 'hospital')
+    assert.equal(allocation.bedsUsedByDestination.get('HOSP1'), 4)
   })
 
   test('reports a full pool instead of assigning extra households', () => {
@@ -92,7 +105,7 @@ describe('matchResources', () => {
     assert.equal(allocation.unassigned[0].reason, 'no vehicles left')
   })
 
-  test('reports a household that fits no shelter bed', () => {
+  test('reports a household that fits no bed anywhere', () => {
     const tiny = shelter({ id: 'tiny', capacity: 2 })
     const allocation = matchResources(
       [scenario({ id: 'a', household_size: 4 }, 'safe', 5)],
@@ -100,10 +113,10 @@ describe('matchResources', () => {
       [tiny],
     )
 
-    assert.equal(allocation.unassigned[0].reason, 'no beds free at any shelter')
+    assert.equal(allocation.unassigned[0].reason, 'no beds free at any destination')
   })
 
-  test('falls back to the default shelter capacity and flags the shelter', () => {
+  test('falls back to the default capacity and flags the safe place', () => {
     const noCapacity = shelter({ id: 'unknown-capacity', capacity: null })
 
     const allocation = matchResources(
@@ -112,9 +125,9 @@ describe('matchResources', () => {
       [noCapacity],
     )
 
-    assert.equal(allocation.bedCapacityByShelter.get(noCapacity.id), 40)
-    assert.deepEqual(allocation.sheltersUsingDefaultCapacity, [noCapacity.id])
-    assert.equal(allocation.assignments.get('a')?.shelter.id, noCapacity.id)
+    assert.equal(allocation.bedCapacityByDestination.get(noCapacity.id), 40)
+    assert.deepEqual(allocation.destinationsUsingDefaultCapacity, [noCapacity.id])
+    assert.equal(allocation.assignments.get('a')?.destination.id, noCapacity.id)
   })
 
   test('falls back to the default household size and counts the assumption', () => {

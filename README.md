@@ -76,7 +76,7 @@ This project is **frontend-only by design**. There is no server, no database and
 ```text
 Isolation Clock/
 ├── README.md            # This file
-├── TASKS.md             # Remaining work, split across the three team members
+├── TASKS.md             # Remaining work, in the order to do it
 ├── AGENTS.md            # Instructions an AI agent reads first (loaded automatically)
 ├── .gitignore
 ├── LICENSE
@@ -96,28 +96,33 @@ Isolation Clock/
 │                        #   households, shelters, hospitals, roads, isolation, meta
 │
 ├── src/                 # The client-side app (Vite + React + TypeScript)
-│   ├── simulation/      # ETI / status, priority score, greedy resource matching
-│   ├── routing/         # (reserved, empty) — routing runs offline in scripts/
-│   ├── workers/         # (reserved, empty) — no worker is used
-│   ├── components/      # Map, ranking panel, why-rank, allocation, before/after
+│   ├── simulation/      # ETI / status, priority score, ranking, greedy allocation,
+│   │                    #   bottleneck-road impact, escalation curve, population counts
+│   ├── components/      # Map, ranking, why-rank, allocation, escalation, critical roads,
+│   │                    #   SMS check-ins, before/after
 │   ├── pages/           # IsolationClockPage — state and wiring
-│   ├── hooks/           # useStudyData: fetch + validate the JSON
+│   ├── hooks/           # useStudyData (fetch) + studyDataValidation (pure validation)
 │   ├── types/           # Shared TypeScript types (household, safe place, isolation…)
 │   └── assets/          # Images, icons, styles input to the bundler
 │
-├── tests/               # Model tests (ETI, scoring, allocation) — `npm test`, no deps
+├── tests/               # Model + data-loading tests — `npm test`, no dependencies
+│                        #   ETI/status, scoring, allocation, SMS overrides,
+│                        #   bottleneck grouping, escalation curve, data validation
 │
 ├── data/                # Data documentation for the offline inputs
 │   └── README.md        #   How the synthetic data is generated; what it is NOT
 │
 ├── docs/                # Architecture, assumptions, methodology, risks, trade-offs
 │   ├── README.md        #   Index + source material
-│   ├── architecture.md
+│   ├── architecture.md  #   Components and data flow
+│   ├── architecture.svg #   The system diagram (vector)
+│   ├── architecture.png #   The system diagram (2× raster, for slides)
 │   ├── assumptions.md
 │   ├── methodology.md
 │   ├── SIMULATION.md    #   What the road thresholds mean (and do not)
 │   ├── SCORING.md       #   Priority score + confidence
 │   ├── ALLOCATION.md    #   Boat / vehicle / bed assignment
+│   ├── SMS.md           #   The browser-only SMS check-in simulator
 │   ├── DATA.md          #   Field-level data reference
 │   ├── risks.md
 │   ├── tradeoffs.md
@@ -134,8 +139,10 @@ Isolation Clock/
 └── screenshots/         # UI captures for this README and the pitch
 ```
 
-> **Note:** the app is scaffolded and runnable (see *Running it locally* below). The one outstanding
-> diagram asset is `docs/architecture.png`, which is still to be rendered for this README and the pitch.
+> **Note:** there is no Web Worker and no in-browser routing module. Both were planned and then
+> deliberately dropped — the graph work runs offline in `scripts/`, and the browser only reads
+> precomputed results. The scaffold's empty `src/routing/` and `src/workers/` placeholders were
+> deleted rather than left undocumented.
 
 ### Folder roles at a glance
 
@@ -143,9 +150,9 @@ Isolation Clock/
 |---|---|
 | `scripts/` | Offline, run-once Python data prep. Turns OSM/elevation into the compact JSON the browser uses, including each household's isolation level. Never deployed. |
 | `public/data/` | The precomputed JSON the app fetches at load. Small, committed, static. |
-| `src/simulation/` | The client-side logic — ETI/status, priority score and greedy resource matching. |
-| `src/routing/`, `src/workers/` | Reserved placeholders only (`.gitkeep`). Routing runs offline in `scripts/`; no worker is used. |
+| `src/simulation/` | The client-side logic — ETI/status, priority score, ranking, greedy resource matching, bottleneck-road impact, the escalation curve and household/people counts. |
 | `src/components/`, `src/pages/` | The coordinator-facing UI. |
+| `tests/` | Node's built-in runner over the `src/simulation/` logic and the data validation. No test dependencies. |
 | `data/` | Data documentation for the offline inputs. |
 | `docs/` | The reasoning behind the build. |
 | `prompts/` | The AI prompt log required for this Vibe Coding hackathon. |
@@ -186,6 +193,27 @@ Because the level only rises, once a household is cut off it stays cut off — w
 precomputed widest-path level is enough. Full reasoning in
 [`docs/methodology.md`](docs/methodology.md).
 
+### The system, end to end
+
+![Isolation Clock architecture: an offline Python pipeline produces static JSON, which the browser loads into pure simulation functions, components and the page.](docs/architecture.png)
+
+Full component table and data flow in [`docs/architecture.md`](docs/architecture.md); the source of
+the image is the diffable [`docs/architecture.svg`](docs/architecture.svg).
+
+### What's in the app
+
+| Panel | What it answers |
+|---|---|
+| **Isolation map** | Where the households are, which roads are already closed, and which roads are *reported* blocked but unverified. |
+| **Scenario slider + playback** | How the picture changes as the level sweeps 0 → 100. |
+| **Escalation curve** | How many households *and people* are cut off at +1 h, +2 h, +3 h … at the illustrative rise rate. Clicking an hour jumps the slider there. |
+| **Critical roads** | Which single road is the last way out for the most households, how many people depend on it, and which safe places it serves. |
+| **Ranking** | Who to reach first, explainable row by row, with household and people totals. |
+| **Why this rank** | The full score breakdown, the confidence value, the route and the bottleneck road. |
+| **Resource allocation** | A suggested greedy split of boats, vehicles and beds across shelters and hospitals. |
+| **SMS check-ins** | A browser-only simulator for safe / help / road-blocked / medical messages, including an offline queue. |
+| **Before / after** | Pin a moment, compare it with another, and see rank shifts and newly isolated households. |
+
 ---
 
 ## 🧪 Handling Bad Data
@@ -197,8 +225,9 @@ The hackathon rules require us to be explicit about behaviour when data is incom
 | Missing vulnerability fields | Add **zero** points (never points) and lower the **confidence** value; the missing fields are listed per household. |
 | Missing isolation data | Show an explicit **`unknown` / "No route"** status instead of inventing a time. |
 | Coarse elevation data | Use a **relative exposure index** instead of trusting terrain for urban drains — see `docs/SIMULATION.md`. |
-| Missing shelter capacity / household size | Fall back to a documented default (40 beds / 4 people) and flag the records that relied on it. |
+| Missing shelter/hospital capacity or household size | Fall back to a documented default (40 beds / 4 people) and flag the records that relied on it. |
 | Data files missing or malformed | The loader aborts with a clear error message rather than rendering a half-built screen. |
+| A reported road closure | Show an **impact preview** against the precomputed bottleneck road and say so plainly — the browser has no road graph, so it never claims to have re-routed. |
 
 > **Risk we name openly:** false precision. A countdown looks authoritative on a crude model. We
 > label this a **scenario simulator, not a forecast**, and always show a separate confidence value.
@@ -221,6 +250,9 @@ Full list in [`docs/tradeoffs.md`](docs/tradeoffs.md). Headlines:
   so the scenario level is a relative index, not a water depth.
 - **Ranking plus a suggested allocation, not dispatch** — we prioritise *who* and suggest boats,
   vehicles and beds; final decisions stay with the coordinator.
+- **An impact preview for reported road blocks, not a re-route** — the app ships road thresholds, not
+  the graph, so a reported closure can only be shown against the bottleneck road already recorded for
+  each household. We label it a preview rather than pretend to re-simulate.
 
 ---
 
@@ -235,7 +267,7 @@ Full list in [`docs/tradeoffs.md`](docs/tradeoffs.md). Headlines:
 | Runtime compute | TypeScript in `src/simulation/` — ETI, scoring, greedy matching (main thread) |
 | Data | Precomputed **JSON** in `public/data/` |
 | Tests | **Node's built-in test runner** (`node:test`) in `tests/` — no test dependencies |
-| Hosting | **Vercel / Netlify** — static deploy, no server |
+| Hosting | **Vercel / Netlify** — static deploy, no server (`vercel.json` + `netlify.toml` committed) |
 
 ### Running it locally
 
@@ -261,10 +293,14 @@ npm run lint      # oxlint
 npm test          # type-check + run the model test suite (node:test, no extra deps)
 ```
 
-The tests cover the model in `src/simulation/`: the ETI/status calculation, the priority score and
-confidence, and the greedy resource matching.
+The tests cover everything in `src/simulation/` plus the data validation: the ETI/status calculation,
+the priority score and confidence, the greedy resource matching, the SMS override and offline-queue
+behaviour, the bottleneck-road grouping, the escalation curve, and every documented
+malformed-input path of the loader. 111 tests, no test dependencies.
 
-To deploy, point Vercel or Netlify at the repo: build `npm run build`, output `dist/`.
+To deploy, point Vercel or Netlify at the repo — the config is already committed
+([`vercel.json`](vercel.json), [`netlify.toml`](netlify.toml)): build `npm run build`, output `dist/`.
+No environment variables and no server-side functions are needed; the app is one static page.
 
 ---
 
@@ -272,10 +308,11 @@ To deploy, point Vercel or Netlify at the repo: build `npm run build`, output `d
 
 - [x] **One** problem domain chosen — Problem 01, Disaster Response
 - [x] Public GitHub repo with visible commit history
-- [ ] Live deployed link submitted (**Vercel or Netlify**)
+- [ ] Live deployed link submitted (**Vercel or Netlify**) — build `npm run build`, output `dist/`
 - [x] `prompts/` folder documenting AI prompts and strategy → [`prompts/prompts.md`](prompts/prompts.md)
 - [x] README with setup steps judges can run locally
-- [ ] Architecture diagram + trade-off notes → [`docs/architecture.md`](docs/architecture.md), [`docs/tradeoffs.md`](docs/tradeoffs.md) *(trade-offs done; `docs/architecture.png` still to render)*
+- [x] Architecture diagram + trade-off notes → [`docs/architecture.png`](docs/architecture.png), [`docs/tradeoffs.md`](docs/tradeoffs.md)
+- [ ] Screenshots in `screenshots/` and referenced below
 - [ ] 3-minute demo video prepared
 - [ ] Submitted before **18 Oct 22:00 PKT**
 
@@ -295,10 +332,12 @@ To deploy, point Vercel or Netlify at the repo: build `npm run build`, output `d
 | Doc | What's inside |
 |---|---|
 | [`docs/architecture.md`](docs/architecture.md) | Client-side system design + component responsibilities |
-| [`docs/methodology.md`](docs/methodology.md) | ETI definition, exposure model, ranking formula |
+| [`docs/methodology.md`](docs/methodology.md) | ETI definition, exposure model, ranking formula, the escalation curve and the road-impact preview |
 | [`docs/SIMULATION.md`](docs/SIMULATION.md) | What the 0–100 road thresholds mean (and do not) |
 | [`docs/SCORING.md`](docs/SCORING.md) | Priority score and confidence formula |
+| [`docs/SMS.md`](docs/SMS.md) | The browser-only SMS check-in simulator and its limits |
 | [`docs/ALLOCATION.md`](docs/ALLOCATION.md) | Boat / vehicle / bed assignment rules |
+| [`docs/DATA.md`](docs/DATA.md) | Field-level reference for the generated data |
 | [`docs/assumptions.md`](docs/assumptions.md) | Every assumption we made, stated plainly |
 | [`docs/risks.md`](docs/risks.md) | Model, data, runtime and UX risks + mitigations |
 | [`docs/tradeoffs.md`](docs/tradeoffs.md) | What we built, what we cut, and why |

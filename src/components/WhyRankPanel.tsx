@@ -152,7 +152,9 @@ export function WhyRankPanel({
           <strong>Resource allocation</strong>
           {resourceAssignment ? (
             <p>
-              {resourceAssignment.resourceLabel} → {resourceAssignment.shelter.name || resourceAssignment.shelter.id}
+              {resourceAssignment.resourceLabel} →{' '}
+              {resourceAssignment.destination.name || resourceAssignment.destination.id}
+              {resourceAssignment.destination.kind === 'hospital' ? ' (hospital)' : ''}
               {' '}({resourceAssignment.distanceKm.toFixed(1)} km straight-line)
               {resourceAssignment.usedDefaultHouseholdSize &&
                 ` · assumed ${resourceAssignment.householdSize} people`}

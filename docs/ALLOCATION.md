@@ -8,19 +8,24 @@ receive vehicles. Each configured boat or vehicle can take one household, up to
 its per-household passenger capacity (defaults: 3 boats with capacity 6 and 4
 vehicles with capacity 5).
 
-For each household, the allocator considers shelters with enough remaining beds
-for the full household, then assigns the closest one using straight-line
-Haversine distance. It breaks equal-distance shelter ties by shelter ID. Beds
-are consumed by household size. The default bed-capacity multiplier is 1; each
-shelter's capacity is multiplied by this value. If capacity is absent or
-invalid, the model assumes 40 beds for that shelter before applying the
-multiplier, and the UI identifies shelters using that assumption.
+For each household, the allocator considers every safe place — **shelters and hospitals** — with
+enough remaining beds for the full household, then assigns the closest one using straight-line
+Haversine distance. Hospitals are included because the isolation model already routes a household to
+whichever of the two it can reach; if the allocator ignored hospitals, the ranking and the
+allocation would contradict each other. It breaks equal-distance ties by id. Beds are consumed by
+household size. The default bed-capacity multiplier is 1; each safe place's capacity is multiplied by
+this value. If capacity is absent or invalid, the model assumes 40 beds for that safe place before
+applying the multiplier, and the UI identifies the places using that assumption.
+
+The allocator does **not** give medical-need households priority for a hospital bed: that would be a
+policy decision we do not have the authority to invent. Destination type is shown, and nothing more
+is inferred from it.
 
 Household size is read from `household_size`. If it is missing or invalid, the
 model assumes 4 people and flags the assumption. A household that cannot fit a
 remaining boat or vehicle receives the corresponding "no boats left" or "no
-vehicles left" reason. Otherwise, a household that cannot fit in any shelter's
-remaining beds receives "no beds free at any shelter".
+vehicles left" reason. Otherwise, a household that cannot fit in any safe place's
+remaining beds receives "no beds free at any destination".
 
 This is a greedy, priority-first allocation, not a globally optimal matching:
 an earlier household may consume beds needed by a later household, and the

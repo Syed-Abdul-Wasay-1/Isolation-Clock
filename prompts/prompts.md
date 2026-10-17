@@ -333,6 +333,230 @@ weights, resource rules, UX and the pitch.
 
 ---
 
+## Part 1 — fixing the product (T1–T11)
+
+**The prompt that drove all of Part 1** (one instruction, then the assistant worked `TASKS.md`
+top-to-bottom without further prompting):
+
+> *"ok do all the tasks which are remaining 1 by 1"*
+
+Each entry below is one task from `TASKS.md`. They share that prompt and the standing
+`AGENTS.md` / `TASKS.md` reading; where a task needed a decision the assistant asked, the answer is
+noted in the outcome rather than invented as a prompt.
+
+### 2026-10-17 - T1 road-blocked SMS reports: impact preview - PARTIAL
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Stop an SMS `3` ("road blocked") being a dead end. Make reporting a blocked road visibly
+  show who it cuts off, without pretending to re-run the model.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T1, option A.
+- **Outcome:** Shipped option A, the honest one. `RoadBlockReport` gained an `edgeId`; a report
+  defaults to the reporting household's own `bottleneck_road` when that value is a real edge id and to
+  `null` otherwise (the named street cannot be located in `roads.json`, so guessing would be
+  fabrication). `src/simulation/roadImpact.ts` gained `getRoadDependants` and `findNearbyRoadEdges`;
+  `src/simulation/smsOverrides.ts` was extracted from the page so the logic is testable. The SMS panel
+  now shows a per-report edge `<select>` of the nearest segments, the dependant count, and a highlight
+  toggle. Reports with a known edge join a derived `previewClosedEdgeIds` set and render as dashed
+  purple "Reported blocked (unverified)". Nothing re-routes: no `isolation_level` and no ETI moves,
+  and the UI and `docs/SMS.md` say so.
+  **Partial** only in that option B (ship the road graph and recompute widest-path in the browser) was
+  deliberately not built; that is now in the post-deadline backlog with its reason. `src/routing/`
+  — whose whole purpose was option B — was deleted under T10 rather than left as an empty promise.
+
+### 2026-10-17 - T2 critical-roads panel - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Answer "which single road, if it fails, isolates the most people?" in the app, from data
+  already shipped.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T2.
+- **Outcome:** New `src/components/CriticalRoadsPanel.tsx` (top 8, expandable) over
+  `describeBottleneckRoadGroups` in `src/simulation/roadImpact.ts`, sorted by households with people
+  shown alongside. Rows carry a threshold tag, and a "street name only · no edge geometry" tag when
+  the value cannot be located. Households already isolated at the current level are counted
+  separately. Clicking a row focuses the road on the map and highlights its dependants; a nested
+  **"Open top household"** button selects the highest-ranked dependant instead of the task's original
+  "scroll the ranking" wording, so one click does one thing. Documented as an *impact preview* — the
+  shipped data records the bottleneck of the best route only, so a group is "households whose best
+  modelled route uses this road", not a proven closure set.
+
+### 2026-10-17 - T3 escalation curve - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Make the clock read as a clock — "at +3 h, N households / M people are cut off" without
+  moving the slider.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T3.
+- **Outcome:** New pure `src/simulation/escalation.ts` (`getEscalationCurve`, `ESCALATION_HOURS` =
+  0,1,2,3,4,6,8,10) and a clickable bar-per-hour `EscalationCurvePanel.tsx`. Level at hour `h` is
+  `min(100, level + riseRate × h)`; a household counts once `isolation_level ≤` that level; households
+  and people are both reported. Clicking an hour jumps the scenario slider there. The panel states
+  that the rise rate is the illustrative `rise_rate_default`, not a measured flood rate. Verified
+  against the real data: from level 40 the curve runs 240 hh / 635 people at +0 h to all 400 hh /
+  1,043 people by +6 h, and hour 0 matches the set the ranking calls isolated.
+
+### 2026-10-17 - T4 count people, not just households - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** A household of six is not a household of one; every headline total should say people too.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T4.
+- **Outcome:** New `src/simulation/population.ts` (`countPeople`, `formatPeopleCount`,
+  `formatHouseholdsAndPeople`). People counts now appear in the ranking header and intro, the
+  allocation totals (grid widened to four columns), the before/after panel (a new `isolatedPeople`
+  field on the pinned snapshot), the two road panels, the map summary and the README. A household with
+  a missing or invalid `household_size` is counted as a household and **excluded** from the people
+  total — never silently assumed to be one person — and the UI reports how many such households there
+  are. It is zero in the shipped data.
+
+### 2026-10-17 - T5 tests for the SMS module - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** `smsCheckins.ts` was the one simulation module with no tests.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T5.
+- **Outcome:** New `tests/smsCheckins.test.ts`, 13 cases: a `2` sets `needs_help` and marks the status
+  unverified; a `4` fills a *missing* medical need but never overwrites a known one; a `3` adds a
+  report and changes no household field; a `3` whose recorded bottleneck is not a known edge gets
+  `edgeId: null`; `reportedFields` marks exactly the fields the check-ins supplied; free text records a
+  check-in without touching a field; a queued batch replayed in order equals sending each message
+  live; and an unknown household throws. Writing these exposed and fixed a real bug — a check-in could
+  clobber a *known* `medical_need` while the UI claimed it only filled gaps.
+
+### 2026-10-17 - T6 tests for data loading - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** The loader's failure paths were untested, and the loader itself was untestable because
+  validation lived inside a React hook.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T6.
+- **Outcome:** Extracted the whole validation into a pure `src/hooks/studyDataValidation.ts`
+  (`validateStudyData`, `INVALID_STRUCTURE_MESSAGE`) and rewrote `useStudyData.ts` to fetch `unknown`
+  and delegate, so the hook is now only I/O. New `tests/studyDataValidation.test.ts`, 8 cases, covers a
+  file that is not an object, a missing collection array, a shelter with no usable id, a non-finite and
+  a non-positive rise rate, and the first household whose isolation record is missing. No DOM needed.
+
+### 2026-10-17 - T7 tests for the new Part 1 functions - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** The pure functions added in T1–T3 needed the same coverage as the older model code.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T7.
+- **Outcome:** `tests/roadImpact.test.ts` (grouping, people counts, ordered dependants, safe-place
+  sums, ties, null bottleneck, an edge nobody depends on → empty rather than an error, display-name
+  handling) and `tests/escalation.test.ts` (monotone, hour 0 equals the currently-isolated set, cap at
+  100, null `isolation_level` never counted, unknown household size not counted as one person, a
+  non-positive rise rate holding the curve flat). Both use the shared `tests/helpers.ts`.
+  Suite went 49 → 111 tests.
+
+### 2026-10-17 - T8 stop re-rendering every road segment per tick - PARTIAL
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** The map re-rendered ~4,958 road polylines on every playback tick — visible jank on a 20 s
+  sweep.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T8.
+- **Outcome:** `IsolationMap.tsx` now groups roads by style with `buildRoadClusters` and draws a
+  handful of `<Polyline>` layers (open / scenario-closed / reported-blocked / focused) instead of one
+  layer per segment — ~4,958 elements per render down to ~4, with identical colours and the SVG
+  renderer kept. Measured in Node against the shipped dataset: one full classification pass over all
+  4,958 segments costs ≈0.15 ms, so the per-tick *computation* was never the problem; the element and
+  layer count was. **Partial, honestly:** the task said to profile with React DevTools first and the
+  build environment has no browser, so no frame timings were captured. That is recorded in
+  `docs/tradeoffs.md` and left as a real check on the deployed URL in T19 rather than papered over with
+  a made-up number.
+
+### 2026-10-17 - T9 optional model upgrades: hospital allocation only - PARTIAL
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Take only the T9 upgrades that can be done without inventing anything, and consciously
+  leave the rest with reasons.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T9.
+- **Outcome:** Shipped **hospital allocation**. `matchResources` now takes every reachable safe place
+  — shelters *and* hospitals — because the isolation model already routes households to both, so
+  allocation that ignored hospitals contradicted the ranking. `SafePlace.kind` is stamped at load time
+  by `validateStudyData`; `docs/ALLOCATION.md` updated; tests added. Real effect: bed capacity available
+  to the allocator rises from 775 to 1,255. Deliberately **not** implemented: medical-need priority for
+  a hospital bed (a policy decision the model should not make silently — the UI shows the destination
+  type and nothing more), route-based allocation distance and a per-road rise rate (both blocked on
+  data the app does not ship / does not have), and the sensitivity band (which `AGENTS.md` §2 asserts
+  does not exist). All four are in the post-deadline backlog.
+
+### 2026-10-17 - T10 delete the empty placeholder folders - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** `src/routing/` and `src/workers/` held only `.gitkeep`. No folder should exist that the
+  docs cannot explain.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T10.
+- **Outcome:** T1 shipped option A, not B, so neither folder had become real — both were deleted, along
+  with the "Reserved, unused folders" note in `docs/architecture.md` and the corresponding rows in the
+  README structure tree and folder table. Replaced by an explicit statement in both files: there is no
+  Web Worker and no in-browser routing, because the graph work runs offline in `scripts/` and the
+  browser only reads precomputed results. `AGENTS.md` §2 stays true.
+
+### 2026-10-17 - T11 docs sync for Part 1 - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** No doc may contradict the shipped code, and every Part 1 task needs a prompt-log entry.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T11.
+- **Outcome:** Updated `docs/methodology.md` (new §6: the escalation curve, the critical-roads impact
+  preview, and people counts), `docs/SIMULATION.md` (a road-block report changes no threshold, level or
+  ETI), `docs/ALLOCATION.md` (hospitals as destinations, plus the explicit "we do not invent medical
+  priority"), `docs/SMS.md` (the `3` path drives a preview), `docs/architecture.md` (new diagram, new
+  components table, new data flow, no empty folders), `docs/tradeoffs.md` (new decisions and new
+  limitations), `docs/README.md`, `README.md` (a new "What's in the app" table, refreshed structure
+  tree and totals), `data/README.md` (`bottleneck_road` can be a street name — 112 of 400 households)
+  and `prompts/context.md`. `SCORING.md` and `assumptions.md` needed no change: Part 1 did not touch
+  the score or add an assumption.
+  Two pieces of drift were found while grepping and fixed at the source rather than in the wording:
+  `tsconfig.*.json` never set `strict` even though `AGENTS.md` and `prompts/context.md` both claimed
+  strict TypeScript — `"strict": true` was added to all three configs and `tsc -b` passes cleanly, so
+  the claim is now true instead of the docs being weakened to match; and
+  `scripts/__pycache__/generate_data.cpython-315.pyc` was committed — stale bytecode for a Python
+  version not used here — so it was deleted and `__pycache__/` plus `*.pyc` added to `.gitignore`.
+
+---
+
+## Part 2–4 — the diagram, hygiene and the deploy config
+
+### 2026-10-17 - T12 architecture diagram, T16 repo size, T18 deploy config - OK
+
+- **Model:** Claude Sonnet 5.5
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Land the presentation and hygiene artifacts that do not need an account or a browser.
+- **Prompt:**
+  > *"ok do all the tasks which are remaining 1 by 1"* — `TASKS.md` T12, T16 and the config half of T18.
+- **Outcome:** **T12.** The system diagram is authored as a hand-written, diffable
+  `docs/architecture.svg` (offline pipeline → shipped JSON → hooks → pure simulation → components →
+  page → UI, with the honest framing that the browser only reads precomputed results) and rasterised to
+  a 2× `docs/architecture.png`. Both are committed, the README embeds the PNG, and both "still to be
+  rendered" notes are gone. **T16.** Measured the repo: working tree under 4 MB, `.git` 1.1 MB, largest
+  file `public/data/roads.json` at 1.15 MB, nothing needing Git LFS. `data/README.md` gained a table
+  naming every committed input file with its size, so the ~2.0 MB `.graphml` and the `cache/*.json`
+  files are explained rather than surprising. A stray tracked `public/data/.gitkeep` was removed now
+  that the folder has real contents. **T18 (config only).** Committed `vercel.json` and `netlify.toml`
+  with equivalent settings — build `npm run build`, output `dist/`, no serverless functions — so either
+  host works with no dashboard configuration. The deploy itself needs an account and is left to the
+  user, as are the screenshots (T13), the branch tidy (T15), the live perf check (T19), the video
+  (T20) and the submission (T21/T22).
+
+---
+
 ## Corrections to earlier drafts
 
 Kept on purpose: the rules ask us to be explicit about behaviour, and an honest log is worth more
@@ -340,7 +564,7 @@ than a flattering one.
 
 | Earlier claim | Reality |
 |---|---|
-| "The heavy graph sweep runs in a **Web Worker**." | Not built. All computation is precomputed in Python; the browser only converts isolation levels to ETI. `src/workers/` is empty. |
+| "The heavy graph sweep runs in a **Web Worker**." | Not built. All computation is precomputed in Python; the browser only converts isolation levels to ETI. The empty `src/workers/` placeholder was later deleted. |
 | "Precomputed **offline snapshots** at +10/+20/+30 cm." | Not built. The app recomputes from `isolation.json` in the browser at any level. |
 | "Every ranking shows a **sensitivity band** / stays-top-10 flag." | Not built. Confidence is shown, but there is no ±margin re-run. |
 | "**Python was dropped entirely.**" | Wrong. Python (`scripts/`) generates every file in `public/data/`. |

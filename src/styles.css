@@ -66,7 +66,7 @@ button { color: inherit; }
 .shelter-icon span { border-radius: 7px; background: #4778c8; }
 .hospital-icon span { border-radius: 50%; background: #815eae; font-size: 18px; }
 .road-key { position: absolute; z-index: 500; right: 14px; bottom: 14px; display: grid; gap: 8px; padding: 10px 12px; border: 1px solid #e7eae6; border-radius: 7px; background: #ffffffed; box-shadow: 0 2px 8px #253b2912; }
-.road-line { width: 15px; height: 2px; display: inline-block; }.road-open { background: #9aa3aa; }.road-closed { background: #4385cf; }
+.road-line { width: 15px; height: 2px; display: inline-block; }.road-open { background: #9aa3aa; }.road-closed { background: #4385cf; }.road-reported { background: repeating-linear-gradient(to right, #7b3fa0 0 5px, transparent 5px 9px); }.road-focused { height: 3px; background: #152a31; }
 .map-footnote { padding: 9px 1px 0; display: flex; justify-content: space-between; color: #899391; font-size: 9px; }
 .map-footnote span:last-child { font-family: var(--mono); }
 
@@ -122,7 +122,7 @@ button { color: inherit; }
 .allocation-controls label { min-width: 0; display: flex; flex-direction: column; gap: 4px; color: #728078; font-size: 9px; }
 .allocation-controls label:last-child { grid-column: 1 / -1; }
 .allocation-controls input { width: 100%; min-width: 0; padding: 6px 7px; border: 1px solid #e0e7e0; border-radius: 5px; background: #fbfcfa; color: #354c45; font: 11px var(--mono); }
-.allocation-totals { margin-top: 11px; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #e7ece6; border-radius: 6px; background: #f8faf7; }
+.allocation-totals { margin-top: 11px; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #e7ece6; border-radius: 6px; background: #f8faf7; }
 .allocation-totals div { min-width: 0; padding: 8px 5px; display: flex; flex-direction: column; gap: 3px; text-align: center; }
 .allocation-totals div + div { border-left: 1px solid #e7ece6; }
 .allocation-totals strong { color: #315b4a; font: 600 13px var(--mono); }
@@ -139,7 +139,8 @@ button { color: inherit; }
 .ranking-section { flex: 0 0 auto; padding: 20px 0 0; display: flex; flex-direction: column; }
 .section-heading { padding: 0 21px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .section-heading h2, .why-header h2 { margin: 5px 0 0; font: 700 18px var(--serif); letter-spacing: -.035em; }
-.isolated-count { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; color: #87918f; font-size: 9px; }
+.isolated-count { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 5px; max-width: 190px; white-space: nowrap; color: #87918f; font-size: 9px; text-align: right; }
+.isolated-people { flex-basis: 100%; color: #98a29d; font-size: 9px; }
 .isolated-count strong { color: #ca6258; font: 700 19px var(--serif); }
 .ranking-tabs { margin: 14px 21px 0; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #e8ece8; }
 .ranking-tab { padding: 9px 4px; border: 0; border-bottom: 2px solid transparent; background: #fff; color: #788580; font-size: 9px; cursor: pointer; }
@@ -257,8 +258,52 @@ button { color: inherit; }
 .sms-compose button:disabled { opacity: .5; cursor: not-allowed; }
 .road-report-list { margin-top: 13px; }
 .road-report-list p { margin: 7px 0 0; color: #87918b; font-size: 9px; }
-.road-report-list li { display: flex; justify-content: space-between; gap: 8px; color: #52675d; font-size: 9px; }
-.road-report-list li span { color: #9a6d37; text-align: right; }
+.road-report-list li { display: block; color: #52675d; font-size: 9px; }
+.road-report-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.road-report-head strong { color: #314447; font: 600 10px var(--mono); }
+.road-report-head span { color: #9a6d37; font-size: 8px; }
+.road-report-edge { margin-top: 7px; display: flex; flex-direction: column; gap: 4px; color: #728078; font-size: 9px; }
+.road-report-edge select { width: 100%; padding: 6px 7px; border: 1px solid #e0e7e0; border-radius: 5px; background: #fbfcfa; color: #354c45; font: 9px var(--mono); }
+.road-report-impact { margin: 7px 0 0; color: #52675d; font-size: 9px; line-height: 1.5; }
+.road-report-impact strong { color: #6b5f96; }
+.road-report-actions { margin-top: 7px; }
+.road-report-actions button { padding: 5px 8px; border: 1px solid #dce6de; border-radius: 5px; background: #fff; color: #49675a; font-size: 9px; font-weight: 600; cursor: pointer; }
+.road-report-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.road-report-note { margin: 9px 0 0; color: #89928e; font-size: 8px; line-height: 1.5; }
+.road-report-note strong { color: #6b5f96; }
+
+.escalation-panel, .critical-roads-panel { padding: 16px 21px; border-bottom: 1px solid var(--line); }
+.escalation-panel .section-heading, .critical-roads-panel .section-heading { padding: 0; }
+.escalation-panel .section-intro, .critical-roads-panel .section-intro { margin: 7px 0 11px; }
+.escalation-chart { margin: 0; padding: 0; height: 116px; display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; align-items: end; list-style: none; }
+.escalation-chart li { height: 100%; }
+.escalation-bar { position: relative; width: 100%; height: 100%; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; border: 1px solid #e7ece6; border-radius: 5px; background: #f8faf7; cursor: pointer; }
+.escalation-bar:hover { border-color: #cfe0d4; background: #f1f6f0; }
+.escalation-bar.is-now { border-color: #b9d4c2; }
+.escalation-bar.is-current { background: #eef5ef; box-shadow: inset 0 0 0 1px #438066; }
+.escalation-bar-fill { width: 100%; min-height: 2px; display: block; border-radius: 4px 4px 0 0; background: linear-gradient(#e07d6d, #ca6258); }
+.escalation-bar-value { position: absolute; top: 5px; color: #52675d; font: 600 9px var(--mono); }
+.escalation-bar-hour { width: 100%; padding-bottom: 3px; color: #8b9692; font: 8px var(--mono); }
+.escalation-summary { margin: 10px 0 0; color: #52675d; font-size: 10px; line-height: 1.55; }
+.escalation-note { margin: 8px 0 0; color: #89928e; font-size: 8px; line-height: 1.45; }
+.escalation-note code { font-family: var(--mono); }
+.critical-roads-lead { margin: 0 0 11px; color: #52675d; font-size: 10px; line-height: 1.55; }
+.critical-roads-list { margin: 0; padding: 0; list-style: none; }
+.critical-roads-list li { border-top: 1px solid #f0f1ef; }
+.critical-roads-list li.is-focused { background: #f6f3fa; }
+.critical-road-row { width: 100%; padding: 9px 2px; display: flex; flex-direction: column; gap: 4px; border: 0; background: none; text-align: left; cursor: pointer; }
+.critical-road-row:hover { background: #f8faf7; }
+.critical-road-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.critical-road-name strong { color: #314447; font: 600 10px var(--mono); overflow-wrap: anywhere; }
+.critical-road-tag { padding: 2px 5px; border-radius: 7px; background: #f1f0f6; color: #6b5f96; font-size: 8px; }
+.critical-road-counts { color: #77847d; font-size: 9px; }
+.critical-road-counts strong { color: #ca6258; font: 600 11px var(--mono); }
+.critical-road-detail { padding: 0 2px 10px; color: #718078; font-size: 9px; line-height: 1.5; }
+.critical-road-detail p { margin: 0 0 5px; }
+.critical-road-open { padding: 5px 8px; border: 1px solid #dce6de; border-radius: 5px; background: #fff; color: #49675a; font-size: 9px; font-weight: 600; cursor: pointer; }
+.critical-roads-note { margin: 10px 0 0; color: #89928e; font-size: 8px; line-height: 1.5; }
+.critical-roads-note strong { color: #6b5f96; }
+.critical-roads-panel .show-all-button { margin-top: 9px; }
 
 .loading-screen, .error-screen { min-height: 100vh; display: grid; place-content: center; justify-items: center; padding: 28px; background: #f4f5f2; text-align: center; }
 .loading-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: #1f5147; color: #fff; font: 700 13px var(--mono); }

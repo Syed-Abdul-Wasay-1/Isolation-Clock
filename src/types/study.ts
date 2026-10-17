@@ -27,6 +27,11 @@ export interface SafePlace {
   lat: number
   lon: number
   capacity?: number | null
+  /**
+   * Stamped at load time by `validateStudyData` so the allocator and the UI can tell a shelter bed
+   * from a hospital bed. It is not part of the shipped JSON.
+   */
+  kind?: 'shelter' | 'hospital'
 }
 
 export interface HouseholdDataset {
@@ -67,7 +72,14 @@ export interface IsolationRecord {
   road_node_id: string
   isolation_level: number | null
   nearest_safe_place_id: string | null
+  /** The bottleneck edge's id — the locatable key. Null when no route exists. */
   bottleneck_road: string | null
+  /**
+   * The bottleneck street's OpenStreetMap name, for display only. Present in data regenerated after
+   * the pipeline fix; absent in the committed dataset, where some `bottleneck_road` values are
+   * street names instead of edge ids.
+   */
+  bottleneck_road_name?: string | null
 }
 
 export interface IsolationDataset {

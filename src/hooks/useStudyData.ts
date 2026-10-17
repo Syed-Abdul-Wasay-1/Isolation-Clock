@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react'
-import type {
-  HouseholdDataset,
-  IsolationDataset,
-  RoadDataset,
-  SafePlace,
-  SafePlaceDataset,
-  StudyData,
-} from '../types/study'
+import { validateStudyData } from './studyDataValidation'
+import type { StudyData } from '../types/study'
 
 type StudyDataState =
   | { status: 'loading' }
@@ -17,24 +11,12 @@ type StudyDataState =
 // hosted under a sub-path (for example a GitHub Pages project site).
 const DATA_BASE = import.meta.env.BASE_URL
 
-async function loadJson<T>(path: string, signal: AbortSignal): Promise<T> {
+async function loadJson(path: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(`${DATA_BASE}${path}`, { signal })
   if (!response.ok) {
     throw new Error(`Could not load ${path} (${response.status} ${response.statusText}).`)
   }
-  return response.json() as Promise<T>
-}
-
-function isSafePlace(value: unknown): value is SafePlace {
-  if (typeof value !== 'object' || value === null) return false
-  const place = value as Record<string, unknown>
-  return (
-    typeof place.id === 'string' &&
-    typeof place.lat === 'number' &&
-    Number.isFinite(place.lat) &&
-    typeof place.lon === 'number' &&
-    Number.isFinite(place.lon)
-  )
+  return response.json() as Promise<unknown>
 }
 
 export function useStudyData(): StudyDataState {
@@ -45,50 +27,17 @@ export function useStudyData(): StudyDataState {
 
     async function load() {
       try {
-        const [householdData, shelterData, hospitalData, roadData, isolationData] =
-          await Promise.all([
-            loadJson<HouseholdDataset>('data/households.json', controller.signal),
-            loadJson<SafePlaceDataset>('data/shelters.json', controller.signal),
-            loadJson<SafePlaceDataset>('data/hospitals.json', controller.signal),
-            loadJson<RoadDataset>('data/roads.json', controller.signal),
-            loadJson<IsolationDataset>('data/isolation.json', controller.signal),
-          ])
-
-        if (
-          !Array.isArray(householdData.households) ||
-          !Array.isArray(shelterData.shelters) ||
-          !shelterData.shelters.every(isSafePlace) ||
-          !Array.isArray(hospitalData.hospitals) ||
-          !hospitalData.hospitals.every(isSafePlace) ||
-          !Array.isArray(roadData.features) ||
-          !Array.isArray(isolationData.households) ||
-          !Number.isFinite(isolationData.config?.rise_rate_default) ||
-          isolationData.config.rise_rate_default <= 0
-        ) {
-          throw new Error('One or more study data files have an invalid structure.')
-        }
-
-        const isolationByHousehold = new Map(
-          isolationData.households.map((record) => [record.id, record]),
-        )
-        const missingIsolation = householdData.households.find(
-          (household) => !isolationByHousehold.has(household.id),
-        )
-        if (missingIsolation) {
-          throw new Error(`Isolation data is missing household ${missingIsolation.id}.`)
-        }
+        const [households, shelters, hospitals, roads, isolation] = await Promise.all([
+          loadJson('data/households.json', controller.signal),
+          loadJson('data/shelters.json', controller.signal),
+          loadJson('data/hospitals.json', controller.signal),
+          loadJson('data/roads.json', controller.signal),
+          loadJson('data/isolation.json', controller.signal),
+        ])
 
         setState({
           status: 'ready',
-          data: {
-            boundingBox: householdData.bounding_box,
-            households: householdData.households,
-            shelters: shelterData.shelters,
-            hospitals: hospitalData.hospitals,
-            roads: roadData.features,
-            isolationByHousehold,
-            riseRateDefault: isolationData.config.rise_rate_default,
-          },
+          data: validateStudyData({ households, shelters, hospitals, roads, isolation }),
         })
       } catch (error) {
         if (controller.signal.aborted) return

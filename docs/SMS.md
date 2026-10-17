@@ -10,9 +10,19 @@ help), and free text. A `2` records an unverified help request; a `4` fills a mi
 medical-need value but does not overwrite a known value. These help/medical changes are
 unverified and affect the illustrative priority score. Every applied check-in is counted
 as an unverified report and does **not** raise confidence, which measures completeness
-only. A `3` creates an unverified report only; it does not close a road or change the
-model. Offline mode holds messages in local React state and applies them when the toggle
-is turned off.
+only.
+
+A `3` creates an unverified report only. It attaches the report to a road edge — by
+default the reporting household's own recorded bottleneck road, or `null` when that
+value is a street name the shipped road data cannot locate. The panel lets you re-point
+the report at one of the road segments nearest the household. Whatever the edge, the
+report **only drives an impact preview**: a dashed "reported blocked" road on the map and
+a count of the households that recorded that road as their bottleneck. It does not close
+a road, and it changes no `isolation_level` and no ETI.
+
+Offline mode holds messages in local React state and applies them, in order, when the
+toggle is turned off; replaying the queue produces exactly the same state as sending each
+message live.
 
 ## What a real deployment would need
 

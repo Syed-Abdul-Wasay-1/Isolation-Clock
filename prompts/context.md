@@ -38,25 +38,49 @@ THE MODEL (do not change the meaning of these without saying so)
   check-ins are unverified and never raise it; they are reported as a separate count.
 - Ranking: score desc, then ETI asc, then fewer missing fields, then household id.
 - Resource matching is greedy: already-isolated households get boats, others get vehicles, closest
-  shelter with enough beds (straight-line Haversine distance), beds consumed by household size.
+  safe place with enough beds (straight-line Haversine distance), beds consumed by household size.
+  Destinations are shelters AND hospitals: the isolation model already routes households to both.
+- Escalation curve: at +h hours the level is min(100, scenarioLevel + h * riseRateDefault); the panel
+  counts the households and people whose isolation_level is at or below that level. Hour 0 equals the
+  set the ranking already calls isolated.
+- An SMS road-block report (message 3) changes NOTHING in the model. The app ships road geometry and
+  thresholds, not the road graph, so it cannot re-route. A report drives an impact preview only: a
+  dashed unverified road on the map plus the households whose recorded bottleneck_road is that road.
+- Household and people counts always appear together. A household with a missing household_size
+  counts as a household but is excluded from the people total (never assumed to be 1 person).
 
 DATA FILES (public/data/)
-- households.json   400 synthetic households (some fields null on purpose)
-- shelters.json     5 shelters, hospitals.json 2 hospitals
+- households.json   400 synthetic households, 1043 people (some fields null on purpose)
+- shelters.json     5 shelters, hospitals.json 2 hospitals (all with a capacity)
 - roads.json        4958 LineString edges with { edge_id, threshold }
 - isolation.json    config.rise_rate_default = 10, plus 400 per-household isolation records
 - meta.json         study area, seed 20261017, fallback details
 
+KNOWN DATA CAVEAT
+- For 112 of the 400 households, isolation.json's bottleneck_road is an OSM STREET NAME rather than
+  an edge id, so it cannot be located in roads.json. The panel lists it as "street name only" and
+  never draws it. scripts/build_isolation_clock.py has been fixed to emit the edge id in
+  bottleneck_road plus a new bottleneck_road_name, but public/data has NOT been regenerated.
+
 KEY FILES
-- src/pages/IsolationClockPage.tsx   page state, playback, ranking composition
-- src/simulation/householdStatus.ts  ETI + status
-- src/simulation/priorityScore.ts    score, confidence, comparator
-- src/simulation/resourceMatching.ts boats/vehicles/bed assignment
-- src/hooks/useStudyData.ts          loads and validates the JSON
-- src/components/                    IsolationMap, RankingPanel, WhyRankPanel,
-                                     ResourceAllocationPanel, BeforeAfterPanel
-- docs/ the authoritative spec: methodology.md, SCORING.md, ALLOCATION.md, SIMULATION.md,
-  assumptions.md, risks.md, tradeoffs.md
+- src/pages/IsolationClockPage.tsx      page state, playback, focus, ranking composition
+- src/simulation/householdStatus.ts     ETI + status
+- src/simulation/priorityScore.ts       score, confidence, comparator
+- src/simulation/smsOverrides.ts        applies SMS overrides, returns the ranked order
+- src/simulation/smsCheckins.ts         SMS override/check-in/road-block types + pure helpers
+- src/simulation/resourceMatching.ts    boats/vehicles/bed assignment (shelters + hospitals)
+- src/simulation/roadImpact.ts          bottleneck-road groups + nearest road segments
+- src/simulation/escalation.ts          households + people per hour ahead
+- src/simulation/population.ts          household/people counting
+- src/simulation/geo.ts                 straight-line distance
+- src/hooks/useStudyData.ts             loads the JSON
+- src/hooks/studyDataValidation.ts      pure, tested validation -> StudyData
+- src/components/                       IsolationMap, RankingPanel, WhyRankPanel,
+                                        ResourceAllocationPanel, EscalationCurvePanel,
+                                        CriticalRoadsPanel, SmsCheckinPanel, BeforeAfterPanel
+- tests/                                node:test over src/simulation/ and the data validation
+- docs/ the authoritative spec: methodology.md, SCORING.md, ALLOCATION.md, SIMULATION.md, SMS.md,
+  DATA.md, assumptions.md, risks.md, tradeoffs.md, architecture.md
 
 RULES FOR YOUR ANSWER
 1. Do not invent features that do not exist. If something is only in docs/ but not in src/, say so.
@@ -66,7 +90,12 @@ RULES FOR YOUR ANSWER
 4. Preserve the relative units. Do not call the scenario level "cm" or "metres".
 5. Keep changes consistent with the existing style: single quotes, no semicolons, small typed
    functions, accessibility attributes on interactive UI.
-6. Tell me how you verified the change (tsc -b, oxlint, npm run build) and what you could not verify.
+6. In src/simulation/, value imports between modules MUST use an explicit .ts extension, because the
+   tests import these files directly with node --test. Type-only imports may omit it.
+7. Add a test in tests/ whenever you change the model. Do not commit or push: leave changes in the
+   working tree for the human to review.
+8. Tell me how you verified the change (npx tsc -b, npx oxlint, npm run build, npm test) and what you
+   could not verify.
 ```
 
 ---

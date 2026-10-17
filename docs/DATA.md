@@ -63,6 +63,27 @@ Every generated file includes:
 - `fallback_used`: whether any household or facility category required fallback data.
 - `fallback_details`: fallback status by households, shelters and hospitals, including real OSM facility counts used.
 
+## Isolation fields (`isolation.json`)
+
+Produced by `scripts/build_isolation_clock.py`. `config.rise_rate_default` is the illustrative
+scenario rise rate (10 index points per hour). Each household gets one record:
+
+| Field | Meaning |
+|---|---|
+| `id` | Household id — join key against `households.json`. |
+| `road_node_id` | The road-graph node the household was snapped to. |
+| `isolation_level` | The **widest-path (maximin)** level at which the last route to a safe place closes: the maximum, over routes, of the route's lowest edge threshold. `null` when no route exists. Not a distance. |
+| `nearest_safe_place_id` | The shelter or hospital on that best route. |
+| `bottleneck_road` | The lowest-threshold edge on that best route — the road to watch. Should be an `edge_id` matching `roads.json`. |
+| `bottleneck_road_name` | The street name for display, when the source edge has one. |
+
+**Known defect in the committed file.** For **112 of the 400 households**, `bottleneck_road` holds an
+OpenStreetMap **street name** rather than an edge id, because the original script preferred the name
+when the edge had one. A name cannot be matched against `roads.json`, so those roads are listed in the
+app *marked* "street name only" and cannot be drawn. The script now emits the edge id in
+`bottleneck_road` and the name in `bottleneck_road_name`, but the file has **not** been regenerated;
+the app reads both shapes. See [`../data/README.md`](../data/README.md).
+
 ## Data quality note
 
 A small percentage of records intentionally contain `null` values and near-duplicate entries to demonstrate how the Isolation Clock prototype handles imperfect, messy data in the field.

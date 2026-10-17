@@ -62,12 +62,16 @@ confidence = max(0, 1 - 0.2 * missingVulnerabilityFields)
 - Greedy, priority-first. **Not** an optimal matching; earlier households consume beds.
 - Queue 1: `status === 'isolated'` -> boats. Queue 2: everyone else -> vehicles.
 - One household per boat/vehicle, bounded by passenger capacity (boat 6, vehicle 5).
-- Shelter choice: nearest with enough **remaining** beds, by **straight-line Haversine** distance -
-  not routed, not travel time. Ties break on shelter id.
+- Safe-place choice: nearest of **all** reachable safe places (shelters **and** hospitals) with enough
+  **remaining** beds, by **straight-line Haversine** distance — not routed, not travel time. Ties
+  break on the safe place id.
 - Beds consumed = household size. Missing size -> assume 4 and flag it. Missing capacity -> assume 40
   and flag it.
-- **Hospitals are never allocated to.** They appear on the map and can be a precomputed
-  `nearest_safe_place_id`, but `matchResources` only receives shelters.
+- **Hospitals are allocatable.** The isolation model already routes a household to whichever safe
+  place it can reach, so `matchResources` receives shelters and hospitals; ignoring hospitals made the
+  allocation contradict the ranking. `SafePlace.kind` ('shelter' | 'hospital') is stamped at load time
+  by `validateStudyData`. Medical-need households get **no** hospital priority — that is a policy call,
+  not a model detail. Do not add one without saying so.
 
 ## Where the code lives
 
@@ -75,10 +79,16 @@ confidence = max(0, 1 - 0.2 * missingVulnerabilityFields)
 |---|---|
 | ETI + status + formatting | `src/simulation/householdStatus.ts` |
 | Score, confidence, comparator | `src/simulation/priorityScore.ts` |
+| SMS overrides + ranked order | `src/simulation/smsOverrides.ts` |
+| SMS check-in / road-block types | `src/simulation/smsCheckins.ts` |
 | Boats / vehicles / beds | `src/simulation/resourceMatching.ts` |
+| Bottleneck-road grouping | `src/simulation/roadImpact.ts` |
+| Hour-by-hour escalation | `src/simulation/escalation.ts` |
+| Household / people counts | `src/simulation/population.ts` |
+| Straight-line distance | `src/simulation/geo.ts` |
 | Composition + playback + tab split | `src/pages/IsolationClockPage.tsx` |
-| Tests | `tests/householdStatus.test.ts`, `tests/priorityScore.test.ts`, `tests/resourceMatching.test.ts` |
-| Spec | `docs/methodology.md`, `docs/SCORING.md`, `docs/ALLOCATION.md`, `docs/SIMULATION.md` |
+| Tests | `tests/householdStatus.test.ts`, `tests/priorityScore.test.ts`, `tests/resourceMatching.test.ts`, `tests/smsCheckins.test.ts`, `tests/roadImpact.test.ts`, `tests/escalation.test.ts`, `tests/studyDataValidation.test.ts` |
+| Spec | `docs/methodology.md`, `docs/SCORING.md`, `docs/ALLOCATION.md`, `docs/SIMULATION.md`, `docs/SMS.md` |
 
 ## Workflow for a change here
 
@@ -101,4 +111,6 @@ npm test        # model test suite (node:test)
 - Sensitivity bands and offline snapshots were **never built**; the docs no longer claim them.
 - `floor_level`, `last_contact_hours` and `data_completeness` are displayed but do **not** affect the
   score or confidence.
-- The score screen shows "/ 100" while the practical maximum is 85.
+- The score screen shows "/ 100" while the practical maximum is 95 (urgency 35 + vulnerability 60).
+- A reported road closure **cannot** be re-simulated in the browser — the app ships road geometry and
+  thresholds, not the graph. It is an impact preview against the precomputed `bottleneck_road`.

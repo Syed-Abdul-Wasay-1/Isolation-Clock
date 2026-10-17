@@ -33,6 +33,12 @@ interface IsolationMapProps {
   onSelectHousehold: (householdId: string) => void
   allocation: ResourceAllocation
   annotations: Map<string, HouseholdMapAnnotation>
+  /** Road edges in the unverified road-block preview; drawn as a dashed "reported blocked" line. */
+  previewClosedEdgeIds: ReadonlySet<string>
+  /** The road edge the panels are currently focused on. */
+  focusedEdgeId: string | null
+  /** Households that depend on the focused edge, drawn with a ring. */
+  focusedHouseholdIds: ReadonlySet<string>
 }
 
 const householdColors = {
@@ -84,6 +90,46 @@ function toRoadPositions(feature: RoadFeature): [number, number][] {
   return feature.geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])
 }
 
+interface RoadCluster {
+  key: string
+  pathOptions: { color: string; weight: number; opacity: number; dashArray?: string }
+  positions: [number, number][][]
+}
+
+/**
+ * Roads are drawn in four style groups rather than one layer per segment. Leaflet treats each
+ * `Polyline` as a single layer, so grouping keeps the same colours while cutting the per-tick work
+ * from one layer update per segment (~5 k) to one per group (~4).
+ */
+function buildRoadClusters(
+  roads: RoadFeature[],
+  scenarioLevel: number,
+  previewClosedEdgeIds: ReadonlySet<string>,
+  focusedEdgeId: string | null,
+): RoadCluster[] {
+  const clusters = new Map<string, RoadCluster>()
+
+  for (const road of roads) {
+    const { edge_id: edgeId, threshold } = road.properties
+    const pathOptions = focusedEdgeId === edgeId
+      ? { color: '#152a31', weight: 3.5, opacity: 1 }
+      : previewClosedEdgeIds.has(edgeId)
+        ? { color: '#7b3fa0', weight: 3, opacity: 0.95, dashArray: '5 4' }
+        : scenarioLevel >= threshold
+          ? { color: '#4385cf', weight: 2.5, opacity: 0.9 }
+          : { color: '#9aa3aa', weight: 1.8, opacity: 0.7 }
+    const key = `${pathOptions.color}-${pathOptions.weight}`
+    let cluster = clusters.get(key)
+    if (!cluster) {
+      cluster = { key, pathOptions, positions: [] }
+      clusters.set(key, cluster)
+    }
+    cluster.positions.push(toRoadPositions(road))
+  }
+
+  return Array.from(clusters.values())
+}
+
 export function IsolationMap({
   boundingBox,
   roads,
@@ -95,11 +141,18 @@ export function IsolationMap({
   onSelectHousehold,
   allocation,
   annotations,
+  previewClosedEdgeIds,
+  focusedEdgeId,
+  focusedHouseholdIds,
 }: IsolationMapProps) {
   const center: [number, number] = [
     (boundingBox.min_lat + boundingBox.max_lat) / 2,
     (boundingBox.min_lon + boundingBox.max_lon) / 2,
   ]
+  const roadClusters = useMemo(
+    () => buildRoadClusters(roads, scenarioLevel, previewClosedEdgeIds, focusedEdgeId),
+    [roads, scenarioLevel, previewClosedEdgeIds, focusedEdgeId],
+  )
 
   return (
     <div className="map-frame">
@@ -116,15 +169,11 @@ export function IsolationMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitMapToData boundingBox={boundingBox} />
-        {roads.map((road) => (
+        {roadClusters.map((cluster) => (
           <Polyline
-            key={road.properties.edge_id}
-            positions={toRoadPositions(road)}
-            pathOptions={{
-              color: scenarioLevel >= road.properties.threshold ? '#4385cf' : '#9aa3aa',
-              weight: scenarioLevel >= road.properties.threshold ? 2.5 : 1.8,
-              opacity: scenarioLevel >= road.properties.threshold ? 0.9 : 0.7,
-            }}
+            key={cluster.key}
+            positions={cluster.positions}
+            pathOptions={cluster.pathOptions}
           />
         ))}
         {households.map(({ household }) => {
@@ -135,7 +184,7 @@ export function IsolationMap({
               key={`assignment-${household.id}`}
               positions={[
                 [household.lat, household.lon],
-                [assignment.shelter.lat, assignment.shelter.lon],
+                [assignment.destination.lat, assignment.destination.lon],
               ]}
               pathOptions={{
                 color: assignment.resourceType === 'boat' ? '#4778c8' : '#d99a2e',
@@ -167,14 +216,16 @@ export function IsolationMap({
         {households.map(({ household, status, etiHours }) => {
           const assignment = allocation.assignments.get(household.id)
           const annotation = annotations.get(household.id)
+          const isSelected = selectedHouseholdId === household.id
+          const isFocused = focusedHouseholdIds.has(household.id)
           return (
             <CircleMarker
               key={household.id}
               center={[household.lat, household.lon]}
-              radius={selectedHouseholdId === household.id ? 7 : 4}
+              radius={isSelected ? 7 : isFocused ? 6 : 4}
               pathOptions={{
-                color: selectedHouseholdId === household.id ? '#152a31' : '#fff',
-                weight: selectedHouseholdId === household.id ? 2 : 1,
+                color: isSelected ? '#152a31' : isFocused ? '#7b3fa0' : '#fff',
+                weight: isSelected || isFocused ? 2 : 1,
                 fillColor: householdColors[status],
                 fillOpacity: 0.92,
               }}
@@ -190,7 +241,8 @@ export function IsolationMap({
                 {assignment ? (
                   <>
                     <br />
-                    {assignment.resourceLabel} to {assignment.shelter.name || assignment.shelter.id}
+                    {assignment.resourceLabel} to{' '}
+                    {assignment.destination.name || assignment.destination.id}
                   </>
                 ) : null}
                 {annotation && annotation.reasons.length > 0 ? (
@@ -218,6 +270,8 @@ export function IsolationMap({
       <div className="road-key">
         <span><i className="road-line road-open" />Road open</span>
         <span><i className="road-line road-closed" />Scenario-closed</span>
+        <span><i className="road-line road-reported" />Reported blocked (unverified)</span>
+        <span><i className="road-line road-focused" />Focused road</span>
       </div>
     </div>
   )

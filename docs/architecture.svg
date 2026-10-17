@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 1000" width="1040" height="1000" role="img" aria-label="Isolation Clock architecture: an offline Python pipeline produces static JSON, which the browser loads into pure simulation functions, components and the page.">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b9692" />
+    </marker>
+    <style>
+      .title { font: 700 23px system-ui, 'Segoe UI', sans-serif; fill: #253b29; }
+      .subtitle { font: 12px system-ui, 'Segoe UI', sans-serif; fill: #6d7b75; }
+      .lane { font: 700 11px system-ui, 'Segoe UI', sans-serif; fill: #7b8a84; letter-spacing: 1.4px; }
+      .box { fill: #f8faf7; stroke: #dbe4dd; stroke-width: 1.2; }
+      .box-offline { fill: #f6f3fa; stroke: #ded6ea; stroke-width: 1.2; }
+      .box-data { fill: #eef5ef; stroke: #b9d4c2; stroke-width: 1.2; }
+      .box-head { font: 700 12.5px system-ui, 'Segoe UI', sans-serif; fill: #2f4a40; }
+      .body { font: 11.5px system-ui, 'Segoe UI', sans-serif; fill: #55665f; }
+      .mono { font: 600 11.5px 'Cascadia Mono', Consolas, monospace; fill: #315b4a; }
+      .small { font: 10.5px system-ui, 'Segoe UI', sans-serif; fill: #7b8a84; }
+      .note { font: 11.5px system-ui, 'Segoe UI', sans-serif; fill: #6b5f96; }
+      .divider { stroke: #c9d6cc; stroke-width: 1.2; stroke-dasharray: 6 5; }
+      .flow { stroke: #8b9692; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1040" height="1000" fill="#ffffff" />
+
+  <text class="title" x="40" y="42">Isolation Clock — architecture</text>
+  <text class="subtitle" x="40" y="64">Static and client-side: the heavy graph work runs offline in Python, and the browser only reads the result.</text>
+
+  <text class="lane" x="40" y="108">OFFLINE — RUN ONCE, ON A DEV MACHINE</text>
+
+  <rect class="box box-offline" x="40" y="124" width="250" height="104" rx="8" />
+  <text class="box-head" x="56" y="150">Inputs</text>
+  <text class="body" x="56" y="172">OpenStreetMap road network</text>
+  <text class="body" x="56" y="190">SRTM elevation (approx. 30 m)</text>
+  <text class="body" x="56" y="208">Synthetic population, seed 20261017</text>
+
+  <path class="flow" d="M 296 176 L 326 176" />
+  <rect class="box box-offline" x="332" y="124" width="250" height="104" rx="8" />
+  <text class="box-head" x="348" y="150">Offline pipeline</text>
+  <text class="mono" x="348" y="172">scripts/generate_data.py</text>
+  <text class="mono" x="348" y="192">scripts/build_isolation_clock.py</text>
+  <text class="small" x="348" y="213">exposure index, widest-path search</text>
+
+  <path class="flow" d="M 588 176 L 618 176" />
+  <rect class="box box-data" x="624" y="124" width="376" height="104" rx="8" />
+  <text class="box-head" x="640" y="150">Shipped static data</text>
+  <text class="mono" x="640" y="172">public/data/*.json</text>
+  <text class="body" x="640" y="193">households · shelters · hospitals · roads · isolation</text>
+  <text class="small" x="640" y="213">400 households · 4,958 road segments · 1,043 people</text>
+
+  <line class="divider" x1="40" y1="268" x2="1000" y2="268" />
+  <text class="small" x="40" y="288">Served as plain static files — no backend, no database, no API at request time. In a flood the app still works if the tiles are cached.</text>
+
+  <text class="lane" x="40" y="326">BROWSER — AT RUNTIME</text>
+
+  <rect class="box" x="220" y="344" width="600" height="76" rx="8" />
+  <text class="box-head" x="238" y="370">Data loading · src/hooks/</text>
+  <text class="mono" x="238" y="392">useStudyData.ts → studyDataValidation.ts → StudyData</text>
+  <text class="small" x="238" y="410">fetched once, validated, then an isolation lookup keyed by household id</text>
+
+  <path class="flow" d="M 520 422 L 520 450" />
+  <rect class="box" x="220" y="452" width="600" height="196" rx="8" />
+  <text class="box-head" x="238" y="478">Simulation · src/simulation/ (pure, testable functions)</text>
+  <text class="mono" x="238" y="502">householdStatus</text>
+  <text class="body" x="404" y="502">ETI in hours and status: safe, urgent, isolated, unknown</text>
+  <text class="mono" x="238" y="526">priorityScore</text>
+  <text class="body" x="404" y="526">urgency plus vulnerability, with confidence kept separate</text>
+  <text class="mono" x="238" y="550">smsOverrides</text>
+  <text class="body" x="404" y="550">folds applied check-ins in, then returns the ranked order</text>
+  <text class="mono" x="238" y="574">resourceMatching</text>
+  <text class="body" x="404" y="574">greedy boats, vehicles and beds across shelters and hospitals</text>
+  <text class="mono" x="238" y="598">roadImpact</text>
+  <text class="body" x="404" y="598">bottleneck-road groups — an impact preview, never a re-route</text>
+  <text class="mono" x="238" y="622">escalation</text>
+  <text class="body" x="404" y="622">households and people cut off per hour, at the illustrative rise rate</text>
+
+  <path class="flow" d="M 520 650 L 520 678" />
+  <rect class="box" x="220" y="680" width="600" height="120" rx="8" />
+  <text class="box-head" x="238" y="706">Components · src/components/</text>
+  <text class="body" x="238" y="728">IsolationMap · RankingPanel · WhyRankPanel · ResourceAllocationPanel</text>
+  <text class="body" x="238" y="748">EscalationCurvePanel · CriticalRoadsPanel · SmsCheckinPanel · BeforeAfterPanel</text>
+  <text class="small" x="238" y="770">presentational: they receive props and render, and hold no model state of their own</text>
+
+  <path class="flow" d="M 520 802 L 520 830" />
+  <rect class="box" x="220" y="832" width="600" height="64" rx="8" />
+  <text class="box-head" x="238" y="858">Page state · src/pages/IsolationClockPage.tsx</text>
+  <text class="small" x="238" y="878">owns the scenario level, playback, pinning, the focused road and the SMS session</text>
+
+  <path class="flow" d="M 520 898 L 520 926" />
+  <rect class="box box-data" x="220" y="928" width="600" height="52" rx="8" />
+  <text class="box-head" x="238" y="952">Rendered UI</text>
+  <text class="body" x="330" y="952">roads recolour, households count down, the ranking re-sorts live</text>
+
+  <text class="note" x="40" y="996">An applied SMS check-in re-runs the simulation chain for that household; a road-block report only moves the map's unverified preview overlay.</text>
+</svg>

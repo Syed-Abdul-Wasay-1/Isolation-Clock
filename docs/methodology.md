@@ -90,7 +90,35 @@ isolated** — and every row is **explainable**: it names the safe place, the bo
 top contributing factors. Confidence is reported separately and does **not** change the score;
 unverified SMS check-ins are counted separately and never raise it.
 
-## 6. How we'd validate it
+## 6. From ranking to roads: the two road views
+
+The ranking answers *who*; two panels answer *which road* and *how soon*.
+
+**Escalation curve.** For each hour `h`, the scenario level is `min(100, scenarioLevel + h ×
+riseRateDefault)`, and the panel counts the households (and people) whose `isolation_level` is at or
+below that level. The count is cumulative and, because the level only rises, monotone. Hour 0
+reproduces exactly the set the ranking already calls isolated. Clicking an hour moves the scenario
+slider to that level. The rise rate is the same illustrative setting used for ETI, so the curve
+shows a **shape**, not a forecast.
+
+**Critical roads.** Every household's isolation record names the bottleneck road on its best
+modelled route. Grouping households by that value answers "which single road appears most often as
+the last way out". This is an **impact preview, not a re-simulation**: the shipped dataset records
+the bottleneck of the *best* route only, so a group means "households whose best modelled route
+uses this road", not a proven set of households whose closure would isolate them. Nothing is
+recomputed and no `isolation_level` is ever edited.
+
+The value is usually a road edge id, but for 112 of the 400 shipped households the offline pipeline
+recorded an OpenStreetMap **street name** instead (it preferred the street's name when the edge had
+one). A value that is not an edge id cannot be located in `roads.json`, so the panel lists it, marks
+it *street name only*, and never draws it. See [`../data/README.md`](../data/README.md).
+
+**People, not just households.** Every headline count is reported as households **and** people,
+using `household_size`. A household with a missing or invalid size is counted as a household and
+**excluded** from the people total — never silently counted as one person — and the UI says how
+many such households there are.
+
+## 7. How we'd validate it
 
 - **Monotonicity:** the isolation time never gets *longer* as the scenario level rises.
 - **Hand cases:** a household whose only bridge is the bottleneck → a finite isolation level; one

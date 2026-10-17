@@ -43,7 +43,7 @@ Produces `roads.json` and `isolation.json`. This is where the model is built.
    then converts to a **percentile rank 0-1**, times 100.
 5. Edge `threshold = 100 * min(exposure[u], exposure[v])`.
 6. Runs a reverse **widest-path (maximin) Dijkstra** from every shelter and hospital to get each
-   household's `isolation_level`, `nearest_safe_place_id`, `bottleneck_road`.
+   household's `isolation_level`, `nearest_safe_place_id`, `bottleneck_road` and `bottleneck_road_name`.
 7. Writes `isolation.json` with `config.rise_rate_default = 10` and prints isolated counts per level.
 
 ## Output shapes - keep them stable
@@ -53,11 +53,20 @@ Defined in `src/types/study.ts` and described in `docs/DATA.md`. Highlights:
 ```jsonc
 // isolation.json
 { "config": { "rise_rate_default": 10 },
-  "households": [ { "id", "road_node_id", "isolation_level", "nearest_safe_place_id", "bottleneck_road" } ] }
+  "households": [ { "id", "road_node_id", "isolation_level", "nearest_safe_place_id",
+                     "bottleneck_road", "bottleneck_road_name" } ] }
 
 // roads.json - GeoJSON FeatureCollection, one LineString per edge
 { "properties": { "edge_id", "threshold" }, "elevation_source": "..." }
 ```
+
+**`bottleneck_road` must always be an edge id**, matching `roads.json`'s `edge_id`, and
+**`bottleneck_road_name`** carries the OpenStreetMap street name for display (falling back to the edge
+id when the way has no name). Do not go back to writing the street name into `bottleneck_road`: a name
+is not locatable in the shipped road data, so the map cannot draw it and the UI has to disclaim it.
+`build_isolation_clock.py` was fixed to this shape, but **`public/data/isolation.json` has not been
+regenerated** — 112 of its 400 households still carry a street name in `bottleneck_road`. The app
+reads both shapes; regenerate when you next have the Python stack installed.
 
 `isolation_level` may be `null` when a household has no directed route; the app must keep handling
 that, even though the current dataset has none.

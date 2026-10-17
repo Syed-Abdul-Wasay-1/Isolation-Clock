@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatEti } from '../simulation/householdStatus'
 import { compareHouseholdIds } from '../simulation/householdStatus'
+import type { PeopleCount } from '../simulation/population'
 import type { PriorityScore } from '../simulation/priorityScore'
 import {
   compareHouseholdPriority,
@@ -23,6 +24,9 @@ interface RankingPanelProps {
   evacuateHouseholds: RankedHousehold[]
   isolatedCount: number
   totalHouseholds: number
+  isolatedPeople: PeopleCount
+  totalPeople: PeopleCount
+  activeIsolatedPeople: PeopleCount
   selectedHouseholdId: string | null
   priorityRankByHousehold: Map<string, number>
   activeTab: RankingTab
@@ -38,6 +42,9 @@ export function RankingPanel({
   evacuateHouseholds,
   isolatedCount,
   totalHouseholds,
+  isolatedPeople,
+  totalPeople,
+  activeIsolatedPeople,
   selectedHouseholdId,
   priorityRankByHousehold,
   activeTab,
@@ -76,7 +83,14 @@ export function RankingPanel({
         </div>
         <div className="isolated-count">
           <strong>{isolatedCount}</strong>
-          <span>isolated / {totalHouseholds}</span>
+          <span>households isolated / {totalHouseholds}</span>
+          <span className="isolated-people">
+            {isolatedPeople.people} of {totalPeople.people} people
+            {totalPeople.unknownSizeHouseholds > 0 &&
+              ` · ${totalPeople.unknownSizeHouseholds} household${
+                totalPeople.unknownSizeHouseholds === 1 ? '' : 's'
+              } of unknown size`}
+          </span>
         </div>
       </div>
       <div className="ranking-tabs" role="tablist" aria-label="Household priority group">
@@ -105,8 +119,8 @@ export function RankingPanel({
       </div>
       <p className="section-intro">
         {activeTab === 'rescue'
-          ? 'Households already isolated at this scenario level.'
-          : 'Households not yet isolated.'}
+          ? `Households already isolated at this scenario level — ${isolatedHouseholds.length} households, ${activeIsolatedPeople.people} people.`
+          : `Households not yet isolated — ${evacuateHouseholds.length} households, ${activeIsolatedPeople.people} people.`}
       </p>
       <div className="ranking-list-controls">
         <label>

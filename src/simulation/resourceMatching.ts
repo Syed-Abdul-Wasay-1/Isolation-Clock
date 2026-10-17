@@ -1,4 +1,5 @@
 import type { HouseholdScenario } from './householdStatus'
+import { distanceInKm } from './geo.ts'
 import type { SafePlace } from '../types/study'
 
 export interface ResourceConfig {
@@ -21,12 +22,16 @@ export const DEFAULT_RESOURCE_CONFIG: ResourceConfig = {
   defaultHouseholdSize: 4,
 }
 
-export type AllocationReason = 'no boats left' | 'no vehicles left' | 'no beds free at any shelter'
+export type AllocationReason =
+  | 'no boats left'
+  | 'no vehicles left'
+  | 'no beds free at any destination'
 
 export interface ResourceAssignment {
   resourceType: 'boat' | 'vehicle'
   resourceLabel: string
-  shelter: SafePlace
+  /** The shelter or hospital the household is sent to. */
+  destination: SafePlace
   distanceKm: number
   householdSize: number
   usedDefaultHouseholdSize: boolean
@@ -44,26 +49,10 @@ export interface ResourceAllocation {
   unassigned: UnassignedHousehold[]
   usedBoats: number
   usedVehicles: number
-  bedsUsedByShelter: Map<string, number>
-  bedCapacityByShelter: Map<string, number>
-  sheltersUsingDefaultCapacity: string[]
+  bedsUsedByDestination: Map<string, number>
+  bedCapacityByDestination: Map<string, number>
+  destinationsUsingDefaultCapacity: string[]
   assumedHouseholdSizeCount: number
-}
-
-function distanceInKm(
-  first: { lat: number; lon: number },
-  second: { lat: number; lon: number },
-): number {
-  const radians = (degrees: number) => (degrees * Math.PI) / 180
-  const latitudeDifference = radians(second.lat - first.lat)
-  const longitudeDifference = radians(second.lon - first.lon)
-  const firstLatitude = radians(first.lat)
-  const secondLatitude = radians(second.lat)
-  const haversine =
-    Math.sin(latitudeDifference / 2) ** 2 +
-    Math.cos(firstLatitude) * Math.cos(secondLatitude) *
-    Math.sin(longitudeDifference / 2) ** 2
-  return 6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
 }
 
 function getHouseholdSize(
@@ -77,8 +66,8 @@ function getHouseholdSize(
   return { size: defaultHouseholdSize, usedDefault: true }
 }
 
-function getBedCapacity(shelter: SafePlace, config: ResourceConfig): number {
-  const capacity = shelter.capacity
+function getBedCapacity(destination: SafePlace, config: ResourceConfig): number {
+  const capacity = destination.capacity
   const baseCapacity =
     typeof capacity === 'number' && Number.isFinite(capacity) && capacity >= 0
       ? capacity
@@ -86,25 +75,32 @@ function getBedCapacity(shelter: SafePlace, config: ResourceConfig): number {
   return baseCapacity * config.bedCapacityMultiplier
 }
 
+/**
+ * Greedy, priority-first allocation of boats, vehicles and beds.
+ *
+ * `destinations` is every reachable safe place — shelters **and** hospitals. The isolation model
+ * already routes a household to whichever it can reach, so a hospital that a household is routed to
+ * must also be able to receive it here; otherwise the two panels contradict each other.
+ */
 export function matchResources(
   rankedHouseholds: HouseholdScenario[],
   config: ResourceConfig,
-  shelters: SafePlace[],
+  destinations: SafePlace[],
 ): ResourceAllocation {
   const assignments = new Map<string, ResourceAssignment>()
   const unassigned: UnassignedHousehold[] = []
-  const bedCapacityByShelter = new Map(
-    shelters.map((shelter) => [shelter.id, getBedCapacity(shelter, config)]),
+  const bedCapacityByDestination = new Map(
+    destinations.map((destination) => [destination.id, getBedCapacity(destination, config)]),
   )
-  const bedsRemainingByShelter = new Map(bedCapacityByShelter)
-  const bedsUsedByShelter = new Map(shelters.map((shelter) => [shelter.id, 0]))
-  const sheltersUsingDefaultCapacity = shelters
-    .filter((shelter) =>
-      typeof shelter.capacity !== 'number' ||
-      !Number.isFinite(shelter.capacity) ||
-      shelter.capacity < 0,
+  const bedsRemainingByDestination = new Map(bedCapacityByDestination)
+  const bedsUsedByDestination = new Map(destinations.map((destination) => [destination.id, 0]))
+  const destinationsUsingDefaultCapacity = destinations
+    .filter((destination) =>
+      typeof destination.capacity !== 'number' ||
+      !Number.isFinite(destination.capacity) ||
+      destination.capacity < 0,
     )
-    .map((shelter) => shelter.id)
+    .map((destination) => destination.id)
   const assumedHouseholdSizeCount = rankedHouseholds.filter((scenario) =>
     getHouseholdSize(scenario, config.defaultHouseholdSize).usedDefault,
   ).length
@@ -142,23 +138,23 @@ export function matchResources(
         continue
       }
 
-      const nearestAvailableShelter = shelters
-        .filter((shelter) =>
-          (bedsRemainingByShelter.get(shelter.id) ?? 0) >= householdSize.size,
+      const nearestAvailableDestination = destinations
+        .filter((destination) =>
+          (bedsRemainingByDestination.get(destination.id) ?? 0) >= householdSize.size,
         )
-        .map((shelter) => ({
-          shelter,
-          distanceKm: distanceInKm(scenario.household, shelter),
+        .map((destination) => ({
+          destination,
+          distanceKm: distanceInKm(scenario.household, destination),
         }))
         .sort((first, second) =>
           first.distanceKm - second.distanceKm ||
-          first.shelter.id.localeCompare(second.shelter.id),
+          first.destination.id.localeCompare(second.destination.id),
         )[0]
 
-      if (!nearestAvailableShelter) {
+      if (!nearestAvailableDestination) {
         unassigned.push({
           scenario,
-          reason: 'no beds free at any shelter',
+          reason: 'no beds free at any destination',
           householdSize: householdSize.size,
           usedDefaultHouseholdSize: householdSize.usedDefault,
         })
@@ -167,22 +163,22 @@ export function matchResources(
 
       usedResources += 1
       const resourceLabel = `${queue.label} ${usedResources}`
-      const shelter = nearestAvailableShelter.shelter
+      const destination = nearestAvailableDestination.destination
       assignments.set(scenario.household.id, {
         resourceType: queue.type,
         resourceLabel,
-        shelter,
-        distanceKm: nearestAvailableShelter.distanceKm,
+        destination,
+        distanceKm: nearestAvailableDestination.distanceKm,
         householdSize: householdSize.size,
         usedDefaultHouseholdSize: householdSize.usedDefault,
       })
-      bedsRemainingByShelter.set(
-        shelter.id,
-        (bedsRemainingByShelter.get(shelter.id) ?? 0) - householdSize.size,
+      bedsRemainingByDestination.set(
+        destination.id,
+        (bedsRemainingByDestination.get(destination.id) ?? 0) - householdSize.size,
       )
-      bedsUsedByShelter.set(
-        shelter.id,
-        (bedsUsedByShelter.get(shelter.id) ?? 0) + householdSize.size,
+      bedsUsedByDestination.set(
+        destination.id,
+        (bedsUsedByDestination.get(destination.id) ?? 0) + householdSize.size,
       )
     }
 
@@ -203,9 +199,9 @@ export function matchResources(
     unassigned,
     usedBoats,
     usedVehicles,
-    bedsUsedByShelter,
-    bedCapacityByShelter,
-    sheltersUsingDefaultCapacity,
+    bedsUsedByDestination,
+    bedCapacityByDestination,
+    destinationsUsingDefaultCapacity,
     assumedHouseholdSizeCount,
   }
 }

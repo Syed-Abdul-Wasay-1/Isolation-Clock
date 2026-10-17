@@ -22,8 +22,9 @@ how long before every road out of a household is closed and it can no longer be 
 1. **Honesty framing.** Never imply the app is a flood forecast. Never call the scenario level
    "cm", "metres" or a water depth. Keep the phrase *"scenario simulator, not a forecast"*.
 2. **Never claim a feature the code does not have.** In particular there is **no Web Worker**, **no
-   offline snapshots / service worker**, and **no sensitivity band**. `src/routing/` and
-   `src/workers/` contain only `.gitkeep`. If a doc says otherwise, fix the doc.
+   offline snapshots / service worker**, and **no sensitivity band**. There is no `src/routing/` or
+   `src/workers/` folder either — the placeholders were deleted, because routing runs offline in
+   `scripts/`. If a doc says otherwise, fix the doc.
 3. **Don't invent numbers.** Read every figure from `public/data/*.json` or the code.
 4. **Change the model, then the docs.** If you change a weight, formula, file shape or unit, update
    the matching doc under `docs/` and say which one you changed.
@@ -59,8 +60,12 @@ npm test           # type-check tests + run the node:test suite in tests/
 - **Verification gate:** before you call a task done, run `npx tsc -b`, `npx oxlint`,
   `npm run build` and `npm test`. All four must pass. Report what you could not verify.
 - **Tests** live in `tests/` and use Node's built-in runner (`node:test`, no dependencies). They cover
-  the model in `src/simulation/`: ETI/status, priority scoring and confidence, and resource matching.
-  Add a case there whenever you change the model.
+  everything in `src/simulation/` (ETI/status, priority scoring and confidence, resource matching, SMS
+  overrides and the offline queue, bottleneck-road grouping, the escalation curve, household/people
+  counting) plus the pure data validation in `src/hooks/studyDataValidation.ts`. Add a case there
+  whenever you change the model.
+  **Value imports between modules in `src/simulation/` must use an explicit `.ts` extension**, because
+  the tests import those files directly with `node --test`. Type-only imports may omit it.
 - **Data regeneration is optional** and needs Python (osmnx / networkx / geopandas). The generated
   JSON is committed, so the app runs without it. If you do regenerate, use the skill
   `.agents/skills/data-pipeline/` and leave the regenerated `public/data/*.json` in the working tree
@@ -73,12 +78,18 @@ npm test           # type-check tests + run the node:test suite in tests/
 | `scripts/generate_data.py` | Offline: OSM buildings/amenities → synthetic households, shelters, hospitals. |
 | `scripts/build_isolation_clock.py` | Offline: elevation + water distance → exposure thresholds → widest-path isolation levels. |
 | `public/data/*.json` | The five static files the app fetches: households, shelters, hospitals, roads, isolation (+ meta). |
-| `src/hooks/useStudyData.ts` | Fetches and validates the JSON; builds the isolation lookup. |
+| `src/hooks/useStudyData.ts` | Fetches the JSON; delegates validation to the pure `src/hooks/studyDataValidation.ts` and builds the isolation lookup. |
 | `src/simulation/householdStatus.ts` | ETI + status (`safe` / `urgent` / `isolated` / `unknown`). |
 | `src/simulation/priorityScore.ts` | Priority score, confidence, comparator. |
-| `src/simulation/resourceMatching.ts` | Greedy boat/vehicle/bed assignment. |
-| `src/components/` | `IsolationMap`, `RankingPanel`, `WhyRankPanel`, `ResourceAllocationPanel`, `BeforeAfterPanel`. |
-| `src/pages/IsolationClockPage.tsx` | Page state, playback, ranking composition. |
+| `src/simulation/smsOverrides.ts` | Applies SMS overrides and returns the ranked order; applies message batches. |
+| `src/simulation/smsCheckins.ts` | SMS override / check-in / road-block types and their pure helpers. |
+| `src/simulation/resourceMatching.ts` | Greedy boat/vehicle/bed assignment across shelters and hospitals. |
+| `src/simulation/roadImpact.ts` | Bottleneck-road grouping and nearest-road lookup. An impact preview — never a re-route. |
+| `src/simulation/escalation.ts` | Household/people counts per hour ahead. |
+| `src/simulation/population.ts` | Household and people counting. |
+| `src/simulation/geo.ts` | Straight-line distance. |
+| `src/components/` | `IsolationMap`, `RankingPanel`, `WhyRankPanel`, `ResourceAllocationPanel`, `EscalationCurvePanel`, `CriticalRoadsPanel`, `SmsCheckinPanel`, `BeforeAfterPanel`. |
+| `src/pages/IsolationClockPage.tsx` | Page state, playback, focus, ranking composition. |
 
 ## 6. Model invariants (units and formulas)
 
@@ -100,9 +111,10 @@ Do not change these meanings without flagging it and updating the docs:
   lower confidence. Applied SMS check-ins are **unverified**: they never raise confidence and are
   reported separately as `unverifiedReportCount`.
 - **Ranking order**: score desc, ETI asc, fewer missing fields, household id.
-- **Resource matching** is greedy: isolated → boats, others → vehicles; closest shelter with enough
-  beds by **straight-line Haversine** distance; beds consumed by household size. It is a suggestion,
-  **not dispatch**.
+- **Resource matching** is greedy: isolated → boats, others → vehicles; closest safe place — shelter
+  or hospital — with enough beds by **straight-line Haversine** distance; beds consumed by household
+  size. Medical-need households get no special priority: that is a policy call, not a model detail. It
+  is a suggestion, **not dispatch**.
 
 ## 7. Prompt log etiquette (required for submission)
 
@@ -143,7 +155,8 @@ Load the matching skill before working in its area:
 
 - **Style:** single quotes, **no semicolons**, 2-space indent, trailing commas, small typed
   functions. Match the file you are editing.
-- **TypeScript is strict.** No `any`; prefer explicit narrow types. Lint with `oxlint`.
+- **TypeScript is strict** (`"strict": true` is set in all three tsconfigs). No `any`; prefer explicit
+  narrow types. Lint with `oxlint`.
 - **React:** function components, hooks for state; keep the page component thin and put logic in
   `src/simulation/`.
 - **Accessibility:** interactive controls need accessible labels / roles.

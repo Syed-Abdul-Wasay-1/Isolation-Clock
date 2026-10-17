@@ -3,24 +3,30 @@ import { IsolationMap } from '../components/IsolationMap'
 import type { HouseholdMapAnnotation } from '../components/IsolationMap'
 import { BeforeAfterPanel } from '../components/BeforeAfterPanel'
 import type { PinnedScenarioSnapshot } from '../components/BeforeAfterPanel'
+import { CriticalRoadsPanel } from '../components/CriticalRoadsPanel'
+import { EscalationCurvePanel } from '../components/EscalationCurvePanel'
 import { RankingPanel } from '../components/RankingPanel'
 import type { RankingSort, RankingTab } from '../components/RankingPanel'
 import { ResourceAllocationPanel } from '../components/ResourceAllocationPanel'
 import { SmsCheckinPanel } from '../components/SmsCheckinPanel'
+import type { RoadBlockReportView } from '../components/SmsCheckinPanel'
 import { WhyRankPanel } from '../components/WhyRankPanel'
 import { useStudyData } from '../hooks/useStudyData'
+import { getEscalationCurve } from '../simulation/escalation'
 import { getHouseholdScenario } from '../simulation/householdStatus'
-import { compareHouseholdPriority, getPriorityScore } from '../simulation/priorityScore'
+import { countPeople } from '../simulation/population'
 import { DEFAULT_RESOURCE_CONFIG, matchResources } from '../simulation/resourceMatching'
 import type { ResourceConfig } from '../simulation/resourceMatching'
-import { getEffectiveHousehold } from '../simulation/smsCheckins'
-import type {
-  RoadBlockReport,
-  SmsCheckinRecord,
-  SmsHouseholdOverride,
-  SmsOverrides,
-  SmsQueuedMessage,
-} from '../simulation/smsCheckins'
+import {
+  buildBottleneckRoadIndex,
+  buildRoadEdgeIndex,
+  describeBottleneckRoadGroups,
+  findNearbyRoadEdges,
+} from '../simulation/roadImpact'
+import type { RoadEdgeOption } from '../simulation/roadImpact'
+import { setRoadBlockEdge } from '../simulation/smsCheckins'
+import type { RoadBlockReport, SmsOverrides, SmsQueuedMessage } from '../simulation/smsCheckins'
+import { applySmsMessages, getRankedHouseholds } from '../simulation/smsOverrides'
 
 const PLAYBACK_DURATION_MS = 20_000
 const PLAYBACK_TICK_MS = 100
@@ -33,32 +39,6 @@ function getPlaybackElapsed(
 ): number {
   if (lastTick === null) return elapsed
   return Math.min(PLAYBACK_DURATION_MS, elapsed + Math.max(0, now - lastTick) * speed)
-}
-
-function getRankedHouseholds(
-  scenarios: ReturnType<typeof getHouseholdScenario>[],
-  overrides: SmsOverrides,
-) {
-  return scenarios
-    .map((scenario) => {
-      const override = overrides[scenario.household.id]
-      const effectiveScenario = {
-        ...scenario,
-        household: getEffectiveHousehold(scenario.household, override),
-      }
-      return {
-        scenario: effectiveScenario,
-        priority: getPriorityScore(effectiveScenario, override?.checkIns.length ?? 0),
-      }
-    })
-    .sort((first, second) =>
-      compareHouseholdPriority(
-        first.scenario,
-        first.priority,
-        second.scenario,
-        second.priority,
-      ),
-    )
 }
 
 function hasMissingVulnerabilityData(
@@ -90,6 +70,9 @@ export function IsolationClockPage() {
   const [smsHouseholdId, setSmsHouseholdId] = useState<string | null>(null)
   const [offlineMode, setOfflineMode] = useState(false)
   const [pendingSmsMessages, setPendingSmsMessages] = useState<SmsQueuedMessage[]>([])
+  const [focusedRoad, setFocusedRoad] = useState<string | null>(null)
+  /** Nearby road segments per household, cached because `roads.json` never changes after load. */
+  const nearbyEdgesRef = useRef(new Map<string, RoadEdgeOption[]>())
 
   useEffect(() => {
     if (!isPlaying || playbackStartLevel === null) return
@@ -121,6 +104,11 @@ export function IsolationClockPage() {
     return () => window.clearInterval(interval)
   }, [isPlaying, playbackSpeed, playbackStartLevel])
 
+  const roadIndex = useMemo(
+    () => (dataState.status === 'ready' ? buildRoadEdgeIndex(dataState.data.roads) : null),
+    [dataState],
+  )
+
   const scenarios = useMemo(() => {
     if (dataState.status !== 'ready') return []
     return dataState.data.households.map((household) => {
@@ -134,6 +122,24 @@ export function IsolationClockPage() {
       )
     })
   }, [dataState, scenarioLevel])
+
+  const bottleneckGroups = useMemo(() => {
+    if (!roadIndex) return []
+    return describeBottleneckRoadGroups(
+      buildBottleneckRoadIndex(scenarios, scenarioLevel),
+      roadIndex,
+    )
+  }, [roadIndex, scenarios, scenarioLevel])
+
+  const escalationPoints = useMemo(
+    () =>
+      getEscalationCurve(
+        scenarios,
+        scenarioLevel,
+        dataState.status === 'ready' ? dataState.data.riseRateDefault : 10,
+      ),
+    [scenarios, scenarioLevel, dataState],
+  )
 
   const rankedHouseholds = getRankedHouseholds(scenarios, smsOverrides)
   const priorityRankByHousehold = new Map(
@@ -157,7 +163,7 @@ export function IsolationClockPage() {
   const allocation = matchResources(
     rankedHouseholds.map(({ scenario }) => scenario),
     resourceConfig,
-    data.shelters,
+    [...data.shelters, ...data.hospitals],
   )
   const isolatedHouseholds = rankedHouseholds.filter(
     ({ scenario }) => scenario.status === 'isolated',
@@ -199,90 +205,67 @@ export function IsolationClockPage() {
     .flatMap((override) => override.roadBlockReports)
     .sort((first, second) => second.timestamp.localeCompare(first.timestamp))
 
-  function applySmsMessages(
-    messages: SmsQueuedMessage[],
-    startingOverrides: SmsOverrides = smsOverrides,
-  ): SmsOverrides {
-    let nextOverrides = startingOverrides
+  const totalPeople = countPeople(data.households)
+  const isolatedPeople = countPeople(
+    isolatedHouseholds.map(({ scenario }) => scenario.household),
+  )
+  const evacuatePeople = countPeople(
+    evacuateHouseholds.map(({ scenario }) => scenario.household),
+  )
+  const bottleneckGroupsByRoad = new Map(
+    bottleneckGroups.map((group) => [group.bottleneckRoad, group]),
+  )
+  const householdsWithoutBottleneck = countPeople(
+    scenarios
+      .filter((scenario) => !scenario.isolation.bottleneck_road)
+      .map((scenario) => scenario.household),
+  )
+  const focusedGroup = focusedRoad ? bottleneckGroupsByRoad.get(focusedRoad) ?? null : null
+  const focusedHouseholdIds = new Set(
+    focusedGroup ? focusedGroup.households.map((household) => household.id) : [],
+  )
+  const previewClosedEdgeIds = new Set(
+    Object.values(smsOverrides)
+      .flatMap((override) => override.roadBlockReports)
+      .map((report) => report.edgeId)
+      .filter(
+        (edgeId): edgeId is string =>
+          edgeId !== null && roadIndex !== null && roadIndex.edgeIds.has(edgeId),
+      ),
+  )
+  const roadBlocks: RoadBlockReportView[] = roadBlockReports.map((report) => ({
+    report,
+    dependants: report.edgeId ? bottleneckGroupsByRoad.get(report.edgeId) ?? null : null,
+    edgeOptions: getNearbyEdges(report.householdId),
+  }))
+  /** Edge ids that exist in `roads.json`; used to decide whether a reported road can be drawn. */
+  const roadEdgeIds = roadIndex ? roadIndex.edgeIds : null
 
-    for (const message of messages) {
-      const scenario = scenarios.find(
-        (item) => item.household.id === message.householdId,
-      )
-      if (!scenario) throw new Error(`Could not find household ${message.householdId} for SMS check-in.`)
+  /** Nearest road segments to a household, computed once per household and then cached. */
+  function getNearbyEdges(householdId: string): RoadEdgeOption[] {
+    const cached = nearbyEdgesRef.current.get(householdId)
+    if (cached) return cached
+    const household = data.households.find((item) => item.id === householdId)
+    if (!household || !roadIndex) return []
+    const bottleneckRoad = data.isolationByHousehold.get(householdId)?.bottleneck_road ?? null
+    const preferred = bottleneckRoad && roadIndex.edgeIds.has(bottleneckRoad) ? bottleneckRoad : null
+    const options = findNearbyRoadEdges(household, data.roads, 6, preferred)
+    nearbyEdgesRef.current.set(householdId, options)
+    return options
+  }
 
-      const existing = nextOverrides[message.householdId]
-      const effectiveHousehold = getEffectiveHousehold(scenario.household, existing)
-      const reportedFields = new Set(existing?.reportedFields ?? [])
-      const checkInTime = new Date().toISOString()
-      const kind = message.message.trim()
-      let smsStatus = existing?.smsStatus
-      let changes: string
-      let roadBlockReports = existing?.roadBlockReports ?? []
+  function handleRoadBlockEdgeChange(report: RoadBlockReport, edgeId: string | null) {
+    setSmsOverrides((current) =>
+      setRoadBlockEdge(current, report.householdId, report.id, edgeId),
+    )
+  }
 
-      if (kind === '1') {
-        changes = 'Safe check-in recorded; no scenario fields changed.'
-      } else if (kind === '2') {
-        smsStatus = 'reported by SMS'
-        if (effectiveHousehold.needs_help !== true) {
-          reportedFields.add('needs_help')
-          changes = 'Status marked SMS-reported, unverified; needs help set to yes (+10 priority points).'
-        } else {
-          changes = 'Status marked SMS-reported, unverified; help request recorded.'
-        }
-      } else if (kind === '3') {
-        const report: RoadBlockReport = {
-          id: `${message.id}-road-block`,
-          householdId: message.householdId,
-          timestamp: checkInTime,
-          status: 'unverified',
-        }
-        roadBlockReports = [...roadBlockReports, report]
-        changes = 'Added an unverified road-block report; the simulation is unchanged until confirmed.'
-      } else if (kind === '4') {
-        smsStatus = 'reported by SMS'
-        if (effectiveHousehold.medical_need === null || effectiveHousehold.medical_need === undefined) {
-          reportedFields.add('medical_need')
-          changes = 'Status marked SMS-reported, unverified; medical need set to yes (+10 priority points).'
-        } else {
-          changes = 'Status marked SMS-reported, unverified; medical-help request recorded without replacing the existing medical-need value.'
-        }
-      } else {
-        changes = 'Free text recorded; no scenario fields changed.'
-      }
-
-      changes += ' Recorded as an unverified check-in; it does not change confidence.'
-      const record: SmsCheckinRecord = {
-        id: message.id,
-        message: message.message,
-        timestamp: checkInTime,
-        changes,
-        reply: '',
-      }
-      const override: SmsHouseholdOverride = {
-        ...(smsStatus ? { smsStatus } : {}),
-        reportedFields: Array.from(reportedFields),
-        checkIns: [...(existing?.checkIns ?? []), record],
-        roadBlockReports,
-      }
-      const overridesWithCheckin = { ...nextOverrides, [message.householdId]: override }
-      const rankIndex = getRankedHouseholds(scenarios, overridesWithCheckin).findIndex(
-        ({ scenario: rankedScenario }) =>
-          rankedScenario.household.id === message.householdId,
-      )
-      if (rankIndex < 0) throw new Error(`Could not rank household ${message.householdId} after SMS check-in.`)
-      const reply = kind === '2' || kind === '4'
-        ? `Received. Your household is ranked #${rankIndex + 1} overall. Help is being prioritised.`
-        : `Received. Your household is ranked #${rankIndex + 1} overall. Your check-in is recorded.`
-      const completedRecord = { ...record, reply }
-      const completedOverride: SmsHouseholdOverride = {
-        ...override,
-        checkIns: [...override.checkIns.slice(0, -1), completedRecord],
-      }
-      nextOverrides = { ...overridesWithCheckin, [message.householdId]: completedOverride }
-    }
-
-    return nextOverrides
+  function jumpToLevel(level: number) {
+    setIsPlaying(false)
+    setPlaybackStartLevel(null)
+    playbackElapsedRef.current = 0
+    playbackTickRef.current = null
+    setScenarioLevel(Math.min(100, Math.max(0, Math.round(level))))
   }
 
   function handleSmsSend(message: SmsQueuedMessage) {
@@ -291,12 +274,12 @@ export function IsolationClockPage() {
       setPendingSmsMessages((current) => [...current, message])
       return
     }
-    setSmsOverrides(applySmsMessages([message]))
+    setSmsOverrides(applySmsMessages(scenarios, smsOverrides, [message], roadEdgeIds))
   }
 
   function handleOfflineModeChange(enabled: boolean) {
     if (offlineMode && !enabled && pendingSmsMessages.length > 0) {
-      setSmsOverrides(applySmsMessages(pendingSmsMessages))
+      setSmsOverrides(applySmsMessages(scenarios, smsOverrides, pendingSmsMessages, roadEdgeIds))
       setPendingSmsMessages([])
     }
     setOfflineMode(enabled)
@@ -306,6 +289,7 @@ export function IsolationClockPage() {
     setPinnedSnapshot({
       level: scenarioLevel,
       isolatedCount,
+      isolatedPeople: isolatedPeople.people,
       rankedHouseholds: rankedHouseholds.map(({ scenario, priority }, index) => ({
         householdId: scenario.household.id,
         rank: index + 1,
@@ -314,7 +298,7 @@ export function IsolationClockPage() {
       })),
       assignments: Array.from(allocation.assignments, ([householdId, assignment]) => ({
         householdId,
-        assignment: { ...assignment, shelter: { ...assignment.shelter } },
+        assignment: { ...assignment, destination: { ...assignment.destination } },
       })),
     })
   }
@@ -379,7 +363,10 @@ export function IsolationClockPage() {
               <h1>Who can still get through?</h1>
             </div>
             <div className="map-summary">
-              <span><strong>{data.households.length}</strong> households</span>
+              <span>
+                <strong>{data.households.length}</strong> households ·{' '}
+                <strong>{totalPeople.people}</strong> people
+              </span>
               <i />
               <span><strong>{data.shelters.length + data.hospitals.length}</strong> safe places</span>
             </div>
@@ -396,10 +383,18 @@ export function IsolationClockPage() {
               onSelectHousehold={setSelectedHouseholdId}
               allocation={allocation}
               annotations={mapAnnotations}
+              previewClosedEdgeIds={previewClosedEdgeIds}
+              focusedEdgeId={
+                focusedRoad && roadIndex && roadIndex.edgeIds.has(focusedRoad) ? focusedRoad : null
+              }
+              focusedHouseholdIds={focusedHouseholdIds}
             />
           </div>
           <div className="map-footnote">
             <span>Road segments turn blue when their scenario threshold is reached.</span>
+            <span>
+              Dashed purple segments are unverified road-block reports — a preview, not a closed road.
+            </span>
             <span>Map tiles © OpenStreetMap</span>
           </div>
         </section>
@@ -488,16 +483,36 @@ export function IsolationClockPage() {
             </div>
           </section>
 
+          <EscalationCurvePanel
+            points={escalationPoints}
+            scenarioLevel={scenarioLevel}
+            riseRateDefault={data.riseRateDefault}
+            totalHouseholds={data.households.length}
+            onJumpToLevel={jumpToLevel}
+          />
+
+          <CriticalRoadsPanel
+            groups={bottleneckGroups}
+            withoutBottleneckCount={householdsWithoutBottleneck.households}
+            withoutBottleneckPeople={householdsWithoutBottleneck.people}
+            focusedBottleneckRoad={focusedRoad}
+            onFocusRoad={setFocusedRoad}
+            onSelectHousehold={setSelectedHouseholdId}
+          />
+
           <SmsCheckinPanel
             rankedHouseholds={rankedHouseholds}
             selectedHouseholdId={selectedSmsHouseholdId}
             onHouseholdChange={setSmsHouseholdId}
             records={smsOverrides[selectedSmsHouseholdId]?.checkIns ?? []}
             pendingMessages={pendingSmsMessages}
-            roadBlockReports={roadBlockReports}
+            roadBlocks={roadBlocks}
             offlineMode={offlineMode}
             onOfflineModeChange={handleOfflineModeChange}
             onSend={handleSmsSend}
+            focusedEdgeId={focusedRoad}
+            onFocusRoad={setFocusedRoad}
+            onRoadBlockEdgeChange={handleRoadBlockEdgeChange}
           />
 
           {pinnedSnapshot && scenarioLevel !== pinnedSnapshot.level && (
@@ -505,6 +520,7 @@ export function IsolationClockPage() {
               snapshot={pinnedSnapshot}
               currentLevel={scenarioLevel}
               currentIsolatedCount={isolatedCount}
+              currentIsolatedPeople={isolatedPeople.people}
               rankedHouseholds={rankedHouseholds}
               allocation={allocation}
             />
@@ -548,6 +564,9 @@ export function IsolationClockPage() {
               evacuateHouseholds={evacuateHouseholds}
               isolatedCount={isolatedCount}
               totalHouseholds={data.households.length}
+              isolatedPeople={isolatedPeople}
+              totalPeople={totalPeople}
+              activeIsolatedPeople={activeTab === 'rescue' ? isolatedPeople : evacuatePeople}
               selectedHouseholdId={selectedHouseholdId}
               priorityRankByHousehold={priorityRankByHousehold}
               activeTab={activeTab}

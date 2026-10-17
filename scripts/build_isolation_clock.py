@@ -245,13 +245,18 @@ def snap_to_road_nodes(graph: Any, places: list[dict[str, Any]]) -> dict[str, An
     return snapped
 
 
-def bottleneck_road_name(edge_data: dict[str, Any]) -> str:
+def bottleneck_road_fields(edge_data: dict[str, Any]) -> tuple[str, str]:
+    """Return ``(edge_id, display_name)`` for the bottleneck edge.
+
+    ``edge_id`` is the locatable key the frontend matches against ``roads.json``. The street name is
+    kept as a **separate** field for display, because a name cannot be located in the shipped road
+    data (several edges can share one street name, and some edges have none).
+    """
     name = edge_data.get("name")
     if isinstance(name, list):
         name = next((item for item in name if item), None)
-    if name:
-        return str(name)
-    return str(edge_data["edge_id"])
+    edge_id = str(edge_data["edge_id"])
+    return edge_id, str(name) if name else edge_id
 
 
 def widest_path_results(
@@ -267,7 +272,7 @@ def widest_path_results(
     best_level = {node: -1.0 for node in graph.nodes}
     best_distance = {node: math.inf for node in graph.nodes}
     best_safe_id: dict[Any, str | None] = {node: None for node in graph.nodes}
-    best_bottleneck: dict[Any, str | None] = {node: None for node in graph.nodes}
+    best_bottleneck: dict[Any, tuple[str, str] | None] = {node: None for node in graph.nodes}
     sequence = itertools.count()
     queue: list[tuple[float, float, str, int, Any]] = []
 
@@ -314,7 +319,7 @@ def widest_path_results(
 
             edge_id = str(edge_data.get("edge_id", f"{neighbor}-{node}-{edge_key}"))
             if float(edge_data["threshold"]) <= level:
-                bottleneck = bottleneck_road_name({**edge_data, "edge_id": edge_id})
+                bottleneck = bottleneck_road_fields({**edge_data, "edge_id": edge_id})
             else:
                 bottleneck = best_bottleneck[node]
             best_level[neighbor] = candidate_level
@@ -353,7 +358,8 @@ def widest_path_results(
                 "road_node_id": str(node),
                 "isolation_level": isolation_value,
                 "nearest_safe_place_id": nearest_safe_id,
-                "bottleneck_road": bottleneck,
+                "bottleneck_road": bottleneck[0] if bottleneck else None,
+                "bottleneck_road_name": bottleneck[1] if bottleneck else None,
             }
         )
     return results, no_route_count

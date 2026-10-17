@@ -43,6 +43,10 @@ logs/
 coverage/
 .nyc_output/
 
+# Python bytecode (the offline scripts are run, not imported)
+__pycache__/
+*.pyc
+
 # Deploy platforms
 .vercel/
 .netlify/
