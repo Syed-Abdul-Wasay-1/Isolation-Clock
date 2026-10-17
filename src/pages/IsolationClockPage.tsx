@@ -4,14 +4,23 @@ import type { HouseholdMapAnnotation } from '../components/IsolationMap'
 import { BeforeAfterPanel } from '../components/BeforeAfterPanel'
 import type { PinnedScenarioSnapshot } from '../components/BeforeAfterPanel'
 import { RankingPanel } from '../components/RankingPanel'
-import type { RankingTab } from '../components/RankingPanel'
+import type { RankingSort, RankingTab } from '../components/RankingPanel'
 import { ResourceAllocationPanel } from '../components/ResourceAllocationPanel'
+import { SmsCheckinPanel } from '../components/SmsCheckinPanel'
 import { WhyRankPanel } from '../components/WhyRankPanel'
 import { useStudyData } from '../hooks/useStudyData'
 import { getHouseholdScenario } from '../simulation/householdStatus'
 import { compareHouseholdPriority, getPriorityScore } from '../simulation/priorityScore'
 import { DEFAULT_RESOURCE_CONFIG, matchResources } from '../simulation/resourceMatching'
 import type { ResourceConfig } from '../simulation/resourceMatching'
+import { getEffectiveHousehold, SMS_CONFIDENCE_STEP } from '../simulation/smsCheckins'
+import type {
+  RoadBlockReport,
+  SmsCheckinRecord,
+  SmsHouseholdOverride,
+  SmsOverrides,
+  SmsQueuedMessage,
+} from '../simulation/smsCheckins'
 
 const PLAYBACK_DURATION_MS = 20_000
 const PLAYBACK_TICK_MS = 100
@@ -26,6 +35,47 @@ function getPlaybackElapsed(
   return Math.min(PLAYBACK_DURATION_MS, elapsed + Math.max(0, now - lastTick) * speed)
 }
 
+function getRankedHouseholds(
+  scenarios: ReturnType<typeof getHouseholdScenario>[],
+  overrides: SmsOverrides,
+) {
+  return scenarios
+    .map((scenario) => {
+      const override = overrides[scenario.household.id]
+      const effectiveScenario = {
+        ...scenario,
+        household: getEffectiveHousehold(scenario.household, override),
+      }
+      return {
+        scenario: effectiveScenario,
+        priority: getPriorityScore(
+          effectiveScenario,
+          (override?.checkIns.length ?? 0) * SMS_CONFIDENCE_STEP,
+        ),
+      }
+    })
+    .sort((first, second) =>
+      compareHouseholdPriority(
+        first.scenario,
+        first.priority,
+        second.scenario,
+        second.priority,
+      ),
+    )
+}
+
+function hasMissingVulnerabilityData(
+  household: ReturnType<typeof getHouseholdScenario>['household'],
+): boolean {
+  return [
+    household.age_band,
+    household.lives_alone,
+    household.mobility,
+    household.medical_need,
+    household.has_phone,
+  ].some((value) => value === null || value === undefined || value === '')
+}
+
 export function IsolationClockPage() {
   const dataState = useStudyData()
   const [scenarioLevel, setScenarioLevel] = useState(0)
@@ -37,7 +87,12 @@ export function IsolationClockPage() {
   const playbackTickRef = useRef<number | null>(null)
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<RankingTab>('evacuate')
+  const [rankingSort, setRankingSort] = useState<RankingSort>('priority')
   const [resourceConfig, setResourceConfig] = useState<ResourceConfig>(DEFAULT_RESOURCE_CONFIG)
+  const [smsOverrides, setSmsOverrides] = useState<SmsOverrides>({})
+  const [smsHouseholdId, setSmsHouseholdId] = useState<string | null>(null)
+  const [offlineMode, setOfflineMode] = useState(false)
+  const [pendingSmsMessages, setPendingSmsMessages] = useState<SmsQueuedMessage[]>([])
 
   useEffect(() => {
     if (!isPlaying || playbackStartLevel === null) return
@@ -83,16 +138,10 @@ export function IsolationClockPage() {
     })
   }, [dataState, scenarioLevel])
 
-  const rankedHouseholds = scenarios
-    .map((scenario) => ({ scenario, priority: getPriorityScore(scenario) }))
-    .sort((first, second) =>
-      compareHouseholdPriority(
-        first.scenario,
-        first.priority,
-        second.scenario,
-        second.priority,
-      ),
-    )
+  const rankedHouseholds = getRankedHouseholds(scenarios, smsOverrides)
+  const priorityRankByHousehold = new Map(
+    rankedHouseholds.map(({ scenario }, index) => [scenario.household.id, index + 1]),
+  )
 
   if (dataState.status === 'loading') {
     return <main className="loading-screen"><span className="loading-mark">IC</span><p>Preparing the Sukkur scenario…</p></main>
@@ -142,6 +191,119 @@ export function IsolationClockPage() {
   const selectedIndex = selectedGroup.findIndex(
     ({ scenario }) => scenario.household.id === selectedHouseholdId,
   )
+  const defaultSmsHouseholdId = rankedHouseholds.find(({ scenario }) =>
+    scenario.household.has_phone !== true || hasMissingVulnerabilityData(scenario.household),
+  )?.scenario.household.id ?? rankedHouseholds[0]?.scenario.household.id ?? ''
+  const selectedSmsHouseholdId = smsHouseholdId &&
+    rankedHouseholds.some(({ scenario }) => scenario.household.id === smsHouseholdId)
+    ? smsHouseholdId
+    : defaultSmsHouseholdId
+  const roadBlockReports: RoadBlockReport[] = Object.values(smsOverrides)
+    .flatMap((override) => override.roadBlockReports)
+    .sort((first, second) => second.timestamp.localeCompare(first.timestamp))
+
+  function applySmsMessages(
+    messages: SmsQueuedMessage[],
+    startingOverrides: SmsOverrides = smsOverrides,
+  ): SmsOverrides {
+    let nextOverrides = startingOverrides
+
+    for (const message of messages) {
+      const scenario = scenarios.find(
+        (item) => item.household.id === message.householdId,
+      )
+      if (!scenario) throw new Error(`Could not find household ${message.householdId} for SMS check-in.`)
+
+      const existing = nextOverrides[message.householdId]
+      const effectiveHousehold = getEffectiveHousehold(scenario.household, existing)
+      const reportedFields = new Set(existing?.reportedFields ?? [])
+      const checkInTime = new Date().toISOString()
+      const kind = message.message.trim()
+      let smsStatus = existing?.smsStatus
+      let changes: string
+      let roadBlockReports = existing?.roadBlockReports ?? []
+
+      if (kind === '1') {
+        changes = 'Safe check-in recorded; no scenario fields changed.'
+      } else if (kind === '2') {
+        smsStatus = 'reported by SMS'
+        if (effectiveHousehold.needs_help !== true) {
+          reportedFields.add('needs_help')
+          changes = 'Status marked SMS-reported, unverified; needs help set to yes (+10 priority points).'
+        } else {
+          changes = 'Status marked SMS-reported, unverified; help request recorded.'
+        }
+      } else if (kind === '3') {
+        const report: RoadBlockReport = {
+          id: `${message.id}-road-block`,
+          householdId: message.householdId,
+          timestamp: checkInTime,
+          status: 'unverified',
+        }
+        roadBlockReports = [...roadBlockReports, report]
+        changes = 'Added an unverified road-block report; the simulation is unchanged until confirmed.'
+      } else if (kind === '4') {
+        smsStatus = 'reported by SMS'
+        if (effectiveHousehold.medical_need === null || effectiveHousehold.medical_need === undefined) {
+          reportedFields.add('medical_need')
+          changes = 'Status marked SMS-reported, unverified; medical need set to yes (+10 priority points).'
+        } else {
+          changes = 'Status marked SMS-reported, unverified; medical-help request recorded without replacing the existing medical-need value.'
+        }
+      } else {
+        changes = 'Free text recorded; no scenario fields changed.'
+      }
+
+      changes += ' Confidence +20 points, capped at High.'
+      const record: SmsCheckinRecord = {
+        id: message.id,
+        message: message.message,
+        timestamp: checkInTime,
+        changes,
+        reply: '',
+      }
+      const override: SmsHouseholdOverride = {
+        ...(smsStatus ? { smsStatus } : {}),
+        reportedFields: Array.from(reportedFields),
+        checkIns: [...(existing?.checkIns ?? []), record],
+        roadBlockReports,
+      }
+      const overridesWithCheckin = { ...nextOverrides, [message.householdId]: override }
+      const rankIndex = getRankedHouseholds(scenarios, overridesWithCheckin).findIndex(
+        ({ scenario: rankedScenario }) =>
+          rankedScenario.household.id === message.householdId,
+      )
+      if (rankIndex < 0) throw new Error(`Could not rank household ${message.householdId} after SMS check-in.`)
+      const reply = kind === '2' || kind === '4'
+        ? `Received. Your household is ranked #${rankIndex + 1} overall. Help is being prioritised.`
+        : `Received. Your household is ranked #${rankIndex + 1} overall. Your check-in is recorded.`
+      const completedRecord = { ...record, reply }
+      const completedOverride: SmsHouseholdOverride = {
+        ...override,
+        checkIns: [...override.checkIns.slice(0, -1), completedRecord],
+      }
+      nextOverrides = { ...overridesWithCheckin, [message.householdId]: completedOverride }
+    }
+
+    return nextOverrides
+  }
+
+  function handleSmsSend(message: SmsQueuedMessage) {
+    setSmsHouseholdId(message.householdId)
+    if (offlineMode) {
+      setPendingSmsMessages((current) => [...current, message])
+      return
+    }
+    setSmsOverrides(applySmsMessages([message]))
+  }
+
+  function handleOfflineModeChange(enabled: boolean) {
+    if (offlineMode && !enabled && pendingSmsMessages.length > 0) {
+      setSmsOverrides(applySmsMessages(pendingSmsMessages))
+      setPendingSmsMessages([])
+    }
+    setOfflineMode(enabled)
+  }
 
   function pinCurrentMoment() {
     setPinnedSnapshot({
@@ -229,7 +391,7 @@ export function IsolationClockPage() {
             <IsolationMap
               boundingBox={data.boundingBox}
               roads={data.roads}
-              households={scenarios}
+              households={rankedHouseholds.map(({ scenario }) => scenario)}
               shelters={data.shelters}
               hospitals={data.hospitals}
               scenarioLevel={scenarioLevel}
@@ -329,6 +491,18 @@ export function IsolationClockPage() {
             </div>
           </section>
 
+          <SmsCheckinPanel
+            rankedHouseholds={rankedHouseholds}
+            selectedHouseholdId={selectedSmsHouseholdId}
+            onHouseholdChange={setSmsHouseholdId}
+            records={smsOverrides[selectedSmsHouseholdId]?.checkIns ?? []}
+            pendingMessages={pendingSmsMessages}
+            roadBlockReports={roadBlockReports}
+            offlineMode={offlineMode}
+            onOfflineModeChange={handleOfflineModeChange}
+            onSend={handleSmsSend}
+          />
+
           {pinnedSnapshot && scenarioLevel !== pinnedSnapshot.level && (
             <BeforeAfterPanel
               snapshot={pinnedSnapshot}
@@ -363,6 +537,9 @@ export function IsolationClockPage() {
               unassigned={allocation.unassigned.find(
                 (item) => item.scenario.household.id === selectedHousehold.scenario.household.id,
               )}
+              smsStatus={smsOverrides[selectedHousehold.scenario.household.id]?.smsStatus}
+              smsReportedFields={smsOverrides[selectedHousehold.scenario.household.id]?.reportedFields ?? []}
+              smsCheckins={smsOverrides[selectedHousehold.scenario.household.id]?.checkIns ?? []}
               onBack={() => {
                 setActiveTab(selectedHousehold.scenario.status === 'isolated' ? 'rescue' : 'evacuate')
                 setSelectedHouseholdId(null)
@@ -375,10 +552,13 @@ export function IsolationClockPage() {
               isolatedCount={isolatedCount}
               totalHouseholds={data.households.length}
               selectedHouseholdId={selectedHouseholdId}
+              priorityRankByHousehold={priorityRankByHousehold}
               activeTab={activeTab}
               allocation={allocation}
               onTabChange={setActiveTab}
               onSelectHousehold={setSelectedHouseholdId}
+              sortBy={rankingSort}
+              onSortChange={setRankingSort}
             />
           )}
           <footer className="side-footer">
