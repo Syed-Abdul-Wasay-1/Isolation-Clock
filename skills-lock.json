@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "playwright-ci": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "ci/SKILL.md",
+      "computedHash": "ab4921950a41ba1f113ac8ecef812cb0337a7a89cc368d1a85a36fe2129ac62f"
+    },
+    "playwright-cli": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "playwright-cli/SKILL.md",
+      "computedHash": "8cc01849290d5eb593de9fe502e9a9fe48f553122d4dea8c02371488d619ecac"
+    },
+    "playwright-core": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "core/SKILL.md",
+      "computedHash": "88cc022a0eb3b1917bdbabd09630a64b8d3b1762c8eb976049dda84f56a6a941"
+    },
+    "playwright-frontend": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "frontend/SKILL.md",
+      "computedHash": "d0b4d067dd7143c11c4791d50923869c0748dd847cdff3c6c1d1b4ef23c14658"
+    },
+    "playwright-migration": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "migration/SKILL.md",
+      "computedHash": "47602dbf9fcc0e2e9d586e7a57179d621990976b62a46f348b31d99393b213a1"
+    },
+    "playwright-pom": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "pom/SKILL.md",
+      "computedHash": "da4fcc0fcec7850e77be834b18362b117aa030fd602060f112a96f70a57118a8"
+    },
+    "playwright-qa": {
+      "source": "testdino-hq/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "qa/SKILL.md",
+      "computedHash": "dd9c4b07c3a15a8759ad61d51337db2a728c78f7f65d81c543ad7d9e8fc823be"
+    }
+  }
+}
