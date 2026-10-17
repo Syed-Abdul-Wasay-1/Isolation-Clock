@@ -1,17 +1,17 @@
 import { useMemo, useState } from 'react'
 import { IsolationMap } from '../components/IsolationMap'
 import { RankingPanel } from '../components/RankingPanel'
+import type { RankingTab } from '../components/RankingPanel'
 import { WhyRankPanel } from '../components/WhyRankPanel'
 import { useStudyData } from '../hooks/useStudyData'
-import {
-  getHouseholdScenario,
-  getSortedActiveHouseholds,
-} from '../simulation/householdStatus'
+import { getHouseholdScenario } from '../simulation/householdStatus'
+import { getPriorityScore } from '../simulation/priorityScore'
 
 export function IsolationClockPage() {
   const dataState = useStudyData()
   const [scenarioLevel, setScenarioLevel] = useState(0)
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<RankingTab>('evacuate')
 
   const scenarios = useMemo(() => {
     if (dataState.status !== 'ready') return []
@@ -42,10 +42,27 @@ export function IsolationClockPage() {
   }
 
   const { data } = dataState
-  const ranking = getSortedActiveHouseholds(scenarios)
+  const rankedHouseholds = scenarios
+    .map((scenario) => ({ scenario, priority: getPriorityScore(scenario) }))
+    .sort((first, second) =>
+      second.priority.total - first.priority.total ||
+      first.scenario.household.id.localeCompare(second.scenario.household.id),
+    )
+  const isolatedHouseholds = rankedHouseholds.filter(
+    ({ scenario }) => scenario.status === 'isolated',
+  )
+  const evacuateHouseholds = rankedHouseholds.filter(
+    ({ scenario }) => scenario.status !== 'isolated',
+  )
   const isolatedCount = scenarios.filter((scenario) => scenario.status === 'isolated').length
-  const selectedScenario = scenarios.find(
-    (scenario) => scenario.household.id === selectedHouseholdId,
+  const selectedHousehold = rankedHouseholds.find(
+    ({ scenario }) => scenario.household.id === selectedHouseholdId,
+  )
+  const selectedGroup = selectedHousehold?.scenario.status === 'isolated'
+    ? isolatedHouseholds
+    : evacuateHouseholds
+  const selectedIndex = selectedGroup.findIndex(
+    ({ scenario }) => scenario.household.id === selectedHouseholdId,
   )
 
   return (
@@ -126,20 +143,28 @@ export function IsolationClockPage() {
             <div className="slider-scale"><span>0 · lower exposure</span><span>100 · higher exposure</span></div>
           </section>
 
-          {selectedScenario ? (
+          {selectedHousehold ? (
             <WhyRankPanel
-              scenario={selectedScenario}
+              scenario={selectedHousehold.scenario}
+              priority={selectedHousehold.priority}
+              rank={selectedIndex + 1}
               safePlaces={[...data.shelters, ...data.hospitals]}
               scenarioLevel={scenarioLevel}
               riseRateDefault={data.riseRateDefault}
-              onBack={() => setSelectedHouseholdId(null)}
+              onBack={() => {
+                setActiveTab(selectedHousehold.scenario.status === 'isolated' ? 'rescue' : 'evacuate')
+                setSelectedHouseholdId(null)
+              }}
             />
           ) : (
             <RankingPanel
-              scenarios={ranking}
+              isolatedHouseholds={isolatedHouseholds}
+              evacuateHouseholds={evacuateHouseholds}
               isolatedCount={isolatedCount}
               totalHouseholds={data.households.length}
               selectedHouseholdId={selectedHouseholdId}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
               onSelectHousehold={setSelectedHouseholdId}
             />
           )}

@@ -1,9 +1,12 @@
 import type { HouseholdScenario } from '../simulation/householdStatus'
 import { formatEti } from '../simulation/householdStatus'
+import type { PriorityFactor, PriorityScore } from '../simulation/priorityScore'
 import type { SafePlace } from '../types/study'
 
 interface WhyRankPanelProps {
   scenario: HouseholdScenario
+  priority: PriorityScore
+  rank: number
   safePlaces: SafePlace[]
   scenarioLevel: number
   riseRateDefault: number
@@ -33,6 +36,8 @@ function displayValue(value: unknown): string {
 
 export function WhyRankPanel({
   scenario,
+  priority,
+  rank,
   safePlaces,
   scenarioLevel,
   riseRateDefault,
@@ -40,6 +45,30 @@ export function WhyRankPanel({
 }: WhyRankPanelProps) {
   const { household, isolation } = scenario
   const safePlace = safePlaces.find((place) => place.id === isolation.nearest_safe_place_id)
+  const reasonForFactor = (factor: PriorityFactor): string => {
+    switch (factor.key) {
+      case 'urgency':
+        return scenario.status === 'isolated'
+          ? 'it is already isolated'
+          : scenario.etiHours === null
+            ? 'its time to cut-off is unknown'
+            : `it is cut off in ${formatEti(scenario.etiHours)}`
+      case 'age65Plus':
+        return 'the resident is aged 65 or older'
+      case 'livesAlone':
+        return 'the resident lives alone'
+      case 'mobilityLimitation':
+        return 'the resident has a mobility limitation or uses a wheelchair'
+      case 'medicalNeed':
+        return 'the household has a medical need'
+      case 'noPhone':
+        return 'the household has no phone'
+    }
+  }
+  const reasons = priority.topFactors.map(reasonForFactor)
+  const explanation = reasons.length
+    ? `Ranked #${rank} mainly because ${reasons.join(' and ')}.`
+    : `Ranked #${rank} because no urgency or vulnerability factors currently add points.`
   const missingFields = vulnerabilityFields
     .filter(([field]) => household[field] === null || household[field] === undefined)
     .map(([, label]) => label)
@@ -52,6 +81,13 @@ export function WhyRankPanel({
       <div className="why-header">
         <div className="eyebrow">HOUSEHOLD DETAIL</div>
         <h2 id="why-title">{household.id}</h2>
+        <div className="why-score">
+          <strong>Priority score {priority.total.toFixed(1)} / 100</strong>
+          <span className={`confidence-badge confidence-${priority.confidenceLevel.toLowerCase()}`}>
+            {priority.confidenceLevel} confidence · {Math.round(priority.confidence * 100)}%
+          </span>
+        </div>
+        <p className="rank-explanation">{explanation}</p>
         <span className={`detail-status status-pill status-${scenario.status}`}>
           {scenario.status === 'isolated'
             ? 'Isolated'
@@ -75,6 +111,36 @@ export function WhyRankPanel({
               : isolation.isolation_level.toFixed(1)}
           </strong>
         </div>
+      </div>
+      <section className="score-breakdown" aria-label="Priority score breakdown">
+        <h3>Why this rank</h3>
+        {priority.factors.map((factor) => (
+          <div className="score-factor" key={factor.key}>
+            <span>{factor.label}</span>
+            <span className="score-factor-bar" aria-hidden="true">
+              <i style={{ width: `${(factor.points / factor.maxPoints) * 100}%` }} />
+            </span>
+            <strong>{factor.points.toFixed(1)}</strong>
+          </div>
+        ))}
+        <div className="score-total">
+          <span>Total</span>
+          <strong>{priority.total.toFixed(1)} / 100</strong>
+        </div>
+      </section>
+      <div className="data-quality score-confidence">
+        <div className="quality-heading">
+          <span className="quality-icon">i</span>
+          <strong>
+            Confidence · {priority.confidenceLevel} · {priority.missingFieldCount} of 5 missing
+          </strong>
+        </div>
+        <p>Confidence depends only on missing vulnerability fields. Missing fields add no vulnerability points.</p>
+        {priority.confidenceNotes.length > 0 ? (
+          <ul>
+            {priority.confidenceNotes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        ) : <p>Missing vulnerability fields: none.</p>}
       </div>
       <div className="detail-route">
         <div className="eyebrow">BEST MODELLED ROUTE</div>

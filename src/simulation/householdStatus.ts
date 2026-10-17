@@ -29,7 +29,10 @@ export function getHouseholdScenario(
 
 export function formatEti(etiHours: number | null): string {
   if (etiHours === null) return 'No route'
-  if (etiHours < 1) return `${Math.round(etiHours * 60)} min`
+  if (etiHours < 1) {
+    const minutes = Math.round(etiHours * 60)
+    return etiHours > 0 && minutes === 0 ? '<1 min' : `${minutes} min`
+  }
   return `${etiHours.toFixed(1)} h`
 }
 
