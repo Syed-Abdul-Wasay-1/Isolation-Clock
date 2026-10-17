@@ -27,10 +27,10 @@
 
 | Area | State |
 |---|---|
-| Branch | `main`, ahead of `origin/main` — Part 1 changes are **in the working tree, uncommitted** |
+| Branch | `main` @ `48c1c68` — **ahead of `origin/main` by 1, not pushed yet** |
 | Build / lint / types | ✅ `tsc -b`, `oxlint`, `npm run build` all pass — now with `strict: true` |
 | Tests | ✅ **111 pass** across 22 suites (was 49) — SMS, data loading, road impact and escalation are covered |
-| Docs | ✅ Synced with Part 1 — `methodology`, `SIMULATION`, `ALLOCATION`, `SMS`, `architecture`, `tradeoffs`, `README`, `data/README`, `prompts/context.md` |
+| Docs | ✅ Synced with Part 1 — `methodology`, `SIMULATION`, `ALLOCATION`, `SMS`, `DATA`, `architecture`, `tradeoffs`, `README`, `data/README`, `prompts/context.md` and the four skills |
 | SMS check-in simulator | ✅ Merged, documented in `docs/SMS.md`; road-block reports now drive an impact preview |
 | Prompt log + skills | ✅ `prompts/` complete, 4 repo skills under `.agents/skills/` |
 | Team roster | ✅ Filled in `README.md` |
@@ -359,9 +359,9 @@ Sizes measured: working tree under 4 MB, `.git` 1.1 MB, largest file `public/dat
 ## T17 · Keep this file live
 **Est:** ongoing · **Done by:** Syed Abdul Wasay
 
-- [ ] Tick boxes as tasks land and refresh the status snapshot (branch tip, test count, gate status).
-- [ ] Fill in `Done by:` on each task as it completes — ask who did it.
-- [ ] Move anything you consciously drop into the [post-deadline backlog](#post-deadline-backlog)
+- [x] Tick boxes as tasks land and refresh the status snapshot (branch tip, test count, gate status).
+- [x] Fill in `Done by:` on each task as it completes — ask who did it.
+- [x] Move anything you consciously drop into the [post-deadline backlog](#post-deadline-backlog)
       with a one-line reason.
 
 ---
