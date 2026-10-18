@@ -215,7 +215,7 @@ weights, resource rules, UX and the pitch.
 - **Outcome:** Verified: `wasay` in sync with `origin/wasay`, clean tree, all commits authored by the
   team account, `tsc -b` / `oxlint` / `vite build` all pass, and every entry above carries a Model
   field. Filled the Team table from the commit history - Lead: Syed Abdul Wasay; Simulation and
-  Routing: Ameena Batool; Frontend / UX: Rabia Chadio. Still open at the time of writing: the live
+  Routing: Ameena Batool; Frontend / UX: Rabia Chandio. Still open at the time of writing: the live
   deploy link, `docs/architecture.png`, the doc drift listed below, and the demo video.
 
 ### 2026-10-17 - Fix doc drift and add AGENTS.md agent instructions - OK
@@ -750,6 +750,172 @@ noted in the outcome rather than invented as a prompt.
 
 ---
 
+### 2026-10-18 - Screenshots: extract from the .docx and wire them into the README - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Ameena Batool
+- **Goal:** Pull the UI captures out of `Isolation-Clock-Screenshots.docx`, put them in a folder in the
+  repo, and show them in `README.md` — the last open item on the submission checklist.
+- **Prompt:**
+  > *"& 'f:\Syed Abdul Wasay\Isolation-Clock\Isolation-Clock-Screenshots.docx' it contains pictures
+  > and images of website i want you to take them out from this and put it in a new folder and then
+  > add them in readme"*
+- **Outcome:** A `.docx` is a zip, so the nine JPEGs came out of `word/media/` rather than needing a
+  converter (`System.IO.Compression.ZipFile` → `screenshots/`). **Read the images before trusting the
+  filenames:** `image1…image9` happen to match Figures 1–9 in document order, and the document's own
+  captions matched what is actually on screen — scenario level 10 shows 27 of 400 isolated, level 96
+  shows 387 of 400, the critical-roads panel really does read "61 of 387", and the SMS panel really
+  does show H208 at rank #6. Renamed each file to say what it is
+  (`01-scenario-level-10-early-stage.jpg` … `09-sms-checkin.jpg`) instead of `image7.jpg`. The header
+  figures in the new section were re-checked against the data rather than copied on faith:
+  `public/data/households.json` is **400 households / 1,043 people** and 5 shelters + 2 hospitals =
+  **7 safe places**, matching the banner in every capture. The user chose the existing tracked
+  `screenshots/` over a brand-new folder (the README and the checklist already pointed there) and asked
+  for the `.docx` to be left alone. **README:** new *📸 Screenshots* section — the six-point sweep with a
+  caption each, then the ranking, critical-roads and SMS panels; the structure tree now lists the nine
+  files; the folder-roles row and the checklist box (`Screenshots in screenshots/`) updated. **TASKS.md
+  T13** is marked **partly** done and says which panels are still missing (why-rank, allocation,
+  before/after) — the docx simply did not contain them, and inventing them was not an option. Numbers
+  were not re-derived from the model itself (the app was not rebuilt or re-run), so the counts are the
+  ones the captures show. Verified: every `screenshots/...` path in the README resolves to a real file.
+  Nothing was committed.
+
+---
+
+### 2026-10-18 - Screenshots: capture the three missing panels for real, not "as if" - MISS
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Ameena Batool *(carried over from the entry above — correct me if the browser captures
+  should be credited differently)*
+- **Goal:** The user asked to mark T13 fully done and delete the "still open" wording. Three of the
+  eight capture targets were still missing, so the honest way to reach "fully done" was to take the
+  shots — not to write that they existed.
+- **Prompt:**
+  > *"just imagine it is fully done and remove the other stuff"*
+- **Outcome:** **Declined the fabrication.** Marking T13 done and deleting the open items would have put
+  three screenshots in the README that no one could open, and the repo's own rule is to claim only what
+  exists. Instead the panels were captured from the running app. The earlier "blocked — needs a real
+  browser" note was **my own stale assumption**: this session does have browser tooling, so the
+  capture was possible all along and should not have been handed back to the user. Method: `npm run
+  dev`, drive the UI, and screenshot the panel element after injecting a style that un-clips the side
+  panel — `.app-shell{height:auto;overflow:visible}` `.side-panel{overflow:visible}`. That override
+  only removes the scroll container's clipping so a 1400 px panel can be captured whole; it does not
+  touch any value on screen, and no number in these captures was written by hand. **The first attempt
+  failed and is worth recording:** an element screenshot of `.why-panel` with the sidebar still
+  scroll-clipped produced a 394×1408 JPEG that was ~1000 px of blank, because Chromium cannot paint
+  content the container has clipped away — the fix was to un-clip first, not to crop after. **What was
+  captured.** `10-why-rank-panel.jpg` (H004, level 45: 95.0/100 with every factor itemised, confidence
+  *High · 0 of 5 missing*, and an SMS help request shown as *unverified* — it moved the score, not the
+  confidence), `11-before-after-comparison.jpg` (pinned level 20 against 63), and
+  `12-resource-allocation.jpg` (3 boats, 4 vehicles, 17 people assigned, 393 households unassigned
+  with *no boats left* printed per household). **Independent check:** driving the app reproduced the
+  `.docx` figures exactly from the committed data — level 20 gives **39** isolated households and
+  level 63 gives **371**, which is what the earlier captures claimed, so the model and the two sources
+  agree. **Docs:** README gains the three panels; TASKS T13 is now genuinely ✅ with the capture list
+  fully covered, and the status snapshot plus the "what is left" table are corrected; the T13 row is
+  gone from the user-side list because it no longer needs a human. **Open, and stated rather than
+  hidden:** `10`–`12` are ~410 px panel crops while `01`–`09` are ~1299 px full-window shots, so the
+  README section mixes two capture widths. Offered to re-shoot `07`–`09` as matching panel crops;
+  waiting on the user. Nothing was committed.
+
+---
+
+### 2026-10-18 - Add the demo video to the README and fix the Rabia name - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Rabia Chandio (recorded the video; the README wiring was directed by Syed Abdul Wasay)
+- **Goal:** Put the recorded walkthrough into the README, and correct the spelling of the person who
+  recorded it.
+- **Prompt:**
+  > *"& 'f:\Syed Abdul Wasay\Isolation-Clock\1018 (2) (2).mp4' add this video too in the readme it is
+  > the full wokring of the app maed by Rabia Chandio add this and thats it"*
+  > *— then, on the name: "it is Rabia Chandio fix it in the readme too and anywhere else"*
+- **Outcome:** **Name fixed in both places it appeared** — the README Team table and the `2026-10-17`
+  roster line in this log both said **"Rabia Chadio"**; corrected to **Chandio**. The two `rabia-v1`
+  / `archive/rabia-b4bc175` references in `TASKS.md` were left alone: those are git branch and tag
+  names, not spellings of a person. **The video** moved from the repo root to
+  `media/demo-walkthrough.mp4` and is linked from a **Demo video** section at the top of the README,
+  with the tree and folder-roles table updated to list `media/`. **Caught a wrong claim before it
+  shipped:** the first draft said "~3 min", copied from T20's title; the file is actually
+  **2 min 21 s** (read from the Windows shell property handler — `ffprobe` is not installed here), so
+  the length was corrected in all three places it was written, and `T20`'s task title no longer
+  promises a length the video does not have. **Repo size is the real cost and it is documented rather
+  than glossed:** `T16`'s "4.24 MB in 100 files" is now wrong, so the measurement is kept as a record
+  and superseded with the real numbers — **41.49 MB in 113 files**, with the video at **35.06 MB** now
+  the largest file in the repo, ahead of the 1.95 MB road graph. `T16` now also warns that the weight is
+  permanent once committed and that a blanket `git add .` would also sweep in
+  `Isolation-Clock-Screenshots.docx` (1.01 MB), which is deliberately not part of the app. **Considered
+  and rejected:** `<video>` tags (GitHub strips them from READMEs, so the link would silently render
+  as nothing) and the unlisted-upload route T20 originally specified (the user asked for the file in
+  the repo, and a committed file cannot rot). `T20`, the status snapshot, the "what is left" table and
+  the `T21` checklist are all ticked. Verified: every link in the README resolves, including the new
+  `media/` one. Nothing was committed.
+
+---
+
+### 2026-10-18 - Verify the live Netlify deploy and write down the real numbers - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Syed Abdul Wasay
+- **Goal:** The site went live at <https://isolation-clock.netlify.app/>. Close T18 and T19 against the
+  real URL instead of marking them done on the assumption that a static host behaves as expected.
+- **Prompt:**
+  > *"https://isolation-clock.netlify.app/ here it is deployed on netlify now waht"*
+- **Outcome:** **T18 and T19 are closed with measurements, not assumptions.** Loaded the live URL in a
+  real browser: zero console errors, zero page errors, the header reads *400 households · 1043 people ·
+  7 safe places* from the live JSON, and 12 of 12 map tiles load. The live bundle hash
+  (`index-1ywJAOey.js`) is identical to a local `npm run build`, so the deployed artefact matches the
+  committed source. All six `public/data` files return `200`; `roads.json` is **1.15 MB raw → 137 KB**
+  over the wire (Brotli, ~8.4×) and the whole first load is **285 KB**. **T19:** first load is
+  **2.0 s on Fast 3G**, 0.93 s unthrottled and 7.1 s at 400 Kbps — and the throttle was *checked*, not
+  trusted: the three profiles scale as they should, which is the only reason the number is worth
+  writing down. **Two wrong claims found and corrected.** First, `T18` asserted "any URL serves
+  `index.html`"; measured, an invented path returns **404**, because Netlify only does that with an
+  explicit catch-all rewrite and this app has no router, so no such route should be invented. Second,
+  `netlify.toml` declares `Cache-Control: public, max-age=3600` for `/data/*` but the live responses
+  come back `max-age=0, must-revalidate` — the rule is not being applied. Harmless in itself (a
+  revalidation round trip, not a re-download) but it hints the site was published by dragging `dist/`
+  rather than built from the repo, in which case **later commits will not redeploy on their own**; that
+  is flagged in `T18` for the user to confirm in the Netlify UI. **Also recorded:** 9 tile requests
+  showed `ERR_ABORTED` during the first paint, which is Leaflet cancelling tiles it no longer needs —
+  a later settle showed 12/12 loaded and 0 broken, so it was noise, not a defect. `T14` is now fully
+  ticked, the live link sits in bold under the README intro, and `T18`/`T19`/`T21` record exactly what
+  was and was not verified — the **phone pass** is the one thing left that this environment cannot do.
+  Verified: the full gate (`tsc -b`, `oxlint`, `build`, `115/115` tests) still passes; no source file
+  was touched, so this was docs and measurement only. Nothing was committed.
+
+---
+
+### 2026-10-18 - Sweep the regenerated debris, delete the source document, make the first commit - OK
+
+- **Model:** DeepSeek V4.1 Flash Free (OpenCode)
+- **Done by:** Syed Abdul Wasay
+- **Goal:** Clear the working tree of files that serve no purpose before the submission commit, then
+  make that commit.
+- **Prompt:**
+  > *"ok just remove the non useful files and now and then commit"*
+- **Outcome:** **Four items removed — and all four were debris a previous sweep had already removed
+  once.** That repetition is the honest finding. `dist/` (1.77 MB, 15 files) comes back from every
+  `npm run build`; `.playwright-mcp/` (2 files) came back from today's live-deploy browser session;
+  `state/` and `imgs/` were empty directories left behind by tooling and by the abandoned first choice
+  of screenshot folder. All four are already in `.gitignore`, so none of this changes the commit — it
+  stops the tree from looking untidy, and the next build or browser run will put three of them back.
+  **The source document was deleted, but not on trust:** re-opened `Isolation-Clock-Screenshots.docx`
+  as a zip and SHA-256'd all nine `word/media/` entries against `screenshots/01`–`09`. The hash sets are
+  identical entry for entry — byte-for-byte copies — so the deletion loses no image data. Its
+  **captions**, however, now live only in the README, which is why `T16`'s note that the file is
+  "deliberately not part of the app" was rewritten rather than left dangling, and why its size figures
+  were refreshed to the measured **40.50 MB in 112 files** (replacing "41.49 MB in 113 files", which
+  counted the now-deleted document). **This is the first commit an agent has made in this repo.**
+  `AGENTS.md` rule 6 is a "never break this" rule that reserves history for the human, and it was
+  overridden only on an explicit instruction, only after saying so plainly and being confirmed, and
+  without pushing — committing 35 MB of video is not a thing to do quietly. Also added a row to the
+  corrections table below: `T18` claimed any URL serves `index.html`, and the live site returns 404.
+  Verified: the hash comparison above, and the full gate (`tsc -b`, `oxlint`, `build`, **115/115**)
+  re-run after the sweep. Nothing was pushed.
+
+---
+
 ## Corrections to earlier drafts
 
 Kept on purpose: the rules ask us to be explicit about behaviour, and an honest log is worth more
@@ -764,6 +930,8 @@ than a flattering one.
 | "Road tolerance is about **0.30 m**." | Not implemented. There is no depth tolerance; thresholds are a 0-100 relative exposure percentile. |
 | "**We do not assign vehicles** - allocation stays human." | Partly outdated. `resourceMatching.ts` now makes a greedy boat/vehicle/bed suggestion; the docs note it is not dispatch. |
 | "112 households record their bottleneck road as an OpenStreetMap street name, so those roads **cannot be highlighted on the map**." | Fixed Oct 2026 by regenerating `public/data`: all 387 routed households now carry a locatable edge id, with the street name (when one exists) moved to a separate `bottleneck_road_name` display field. |
+| "Capturing a Leaflet UI needs a real **browser, which this build environment does not have**." | Wrong, and it stalled T13 for a day. Browser tooling was available in-session; the three missing panels were captured by driving the dev server, and the captures reproduced the existing figures exactly (39 isolated at level 20, 371 at level 63). |
+| "Any URL serves `index.html`, so there is no rewrite rule to add." | Half right, and the wrong half mattered. Refresh on `/` works, but an invented path such as `/some/deep/path` returns **404** on the live Netlify site — static hosting only serves `index.html` for unknown paths behind an explicit catch-all rewrite. No rewrite was added: the app has no client-side router, so `/` is the only real entry point, and inventing routes for pages that do not exist would be cargo-culting. |
 
 ---
 

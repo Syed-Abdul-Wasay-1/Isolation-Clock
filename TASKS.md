@@ -27,7 +27,7 @@
 
 | Area | State |
 |---|---|
-| Branch | `main` @ `48c1c68` — **ahead of `origin/main` by 1, not pushed yet** |
+| Branch | `main` @ `e76b747`, **in sync with `origin/main`** — plus a working tree of uncommitted changes (screenshots, `media/`, README/TASKS/prompts edits) |
 | Build / lint / types | ✅ `tsc -b`, `oxlint`, `npm run build` all pass — now with `strict: true` |
 | Tests | ✅ **115 pass** across 23 suites (was 49) — SMS, data loading, road impact and escalation are covered |
 | Docs | ✅ Synced with Part 1 — `methodology`, `SIMULATION`, `ALLOCATION`, `SMS`, `DATA`, `architecture`, `tradeoffs`, `README`, `data/README`, `prompts/context.md` and the four skills |
@@ -35,25 +35,22 @@
 | Prompt log + skills | ✅ `prompts/` complete; the 4 repo skills + the axe-core a11y skill under `.agents/skills/` |
 | Team roster | ✅ Filled in `README.md` |
 | **Product gaps** | ✅ Closed — road-block preview, critical roads, escalation curve and people counts all ship |
-| **Live deploy** | ❌ Not deployed; no deploy config committed yet (T18, needs an account) |
+| **Live deploy** | ✅ Live at <https://isolation-clock.netlify.app/> (T18) — `netlify.toml` + `vercel.json` committed |
 | **`docs/architecture.png`** | ✅ Rendered, linked from the README (T12) |
-| **Screenshots** | ❌ `screenshots/` is empty — needs a browser (T13) |
-| **Demo video** | ❌ Not recorded (T20) |
+| **Screenshots** | ✅ 12 captures in `screenshots/`, rendered in the README (T13) |
+| **Demo video** | ✅ Recorded by Rabia Chandio — 2 min 21 s, in `media/` and linked from the README (T20) |
 
 ---
 
 ## What is left, and whose hands it is in
 
-Part 1 (T1–T11), the diagram (T12), the repo-size check (T16) and the deploy **config** (T18) are
-done and gated. What remains cannot be finished by an agent working in a terminal:
+Part 1 (T1–T11), the diagram (T12), the screenshots (T13), the repo-size check (T16), the live deploy
+(T18), the first-load check (T19) and the demo video (T20) are done. What remains cannot be finished
+by an agent working in a terminal:
 
 | Task | Why it is user-side |
 |---|---|
-| **T13 screenshots** | Needs a real browser to capture the Leaflet UI. |
 | **T15 branch tidy** | Deletes local and remote branches — a history operation. |
-| **T18 deploy** | Needs a Vercel/Netlify account. The config is committed and does not need touching. |
-| **T19 perf check** | Needs the live URL from T18. |
-| **T20 demo video** | Needs a person to record it. |
 | **T21 / T22 submit + verify** | Yours. |
 | **Who did what** | Each task's `Done by:` is filled from the answer to that question, never guessed. |
 
@@ -299,23 +296,30 @@ Two extra drift fixes found while syncing:
 **Done when:** the README renders the diagram and no text calls it pending. ✅
 
 ## T13 · Screenshots
-**Est:** 45 min · **Done by:** —
+**Est:** 45 min · **Done by:** Ameena Batool
 
-- [ ] Capture: the map mid-sweep; the ranking with a selected household; the why-panel (score +
-      confidence + verification); the allocation panel; the escalation curve; the critical-roads
-      panel; the SMS panel with a road-block report open; and the before/after comparison.
-- [ ] Save into `screenshots/` with descriptive names; reference them from `README.md`.
+- [x] Capture the sweep — the same view at scenario levels **10, 20, 30, 45, 63 and 96**, with the
+      escalation curve reading the same rise — plus the **critical-roads panel**, the **priority
+      ranking** and the **SMS panel with a road-block report open**. 9 images lifted out of
+      `Isolation-Clock-Screenshots.docx` into `screenshots/`.
+- [x] Capture the three panels the `.docx` did not contain — the **why-panel** (score + confidence +
+      verification), the **resource allocation** panel and the **before/after comparison** — by
+      driving the running app, `screenshots/10`–`12`.
+- [x] Save into `screenshots/` with descriptive names; reference them from `README.md`.
 
-**Done when:** `screenshots/` is non-empty and the README shows them. ⚠️ **Blocked:** capturing a
-Leaflet UI needs a real browser, which this build environment does not have. User-side — open the dev
-server, take the shots, drop them in `screenshots/`.
+**Done when:** `screenshots/` is non-empty and the README shows them. ✅ **Done:** all 12 captures are
+in `screenshots/` and every row of the capture list above is covered. The sweep and the first three
+panels are full-window shots; `10`–`12` are panel detail crops, because the panels are ~410 px wide
+inside the window and the score breakdown is not legible in a full-window capture.
 
 ## T14 · README final read
 **Est:** 30 min · **Done by:** Syed Abdul Wasay (partly)
 
 - [x] Read it start to finish as a judge: does `npm install` + `npm run dev` work exactly as written?
       Yes — the command block matches `package.json`, and the dev server is at `:5173`.
-- [ ] Add the live link (T18) and the video link (T20) near the top. **Blocked on T18/T20.**
+- [x] Add the live link (T18) near the top. Live at <https://isolation-clock.netlify.app/>, in bold
+      directly under the intro. ✅ The video link (T20) is in its own section above the fold, and the
+      tree plus folder-roles table list `media/`.
 - [x] Make the "Project Structure" tree match the repo after T2/T10/T12/T13 — `routing/` and
       `workers/` removed, the new simulation modules and panels added, the diagram assets listed, and
       the folder-roles table refreshed to match.
@@ -323,7 +327,7 @@ server, take the shots, drop them in `screenshots/`.
       called cm or metres. Swept the whole file — clean.
 
 **Done when:** every command in it is copy-pasteable and every link resolves. ⚠️ Everything except the
-two external links is done; those two arrive with T18 and T20.
+live deploy link is done; that one arrives with T18.
 
 ---
 
@@ -359,6 +363,17 @@ Sizes measured after the cleanup pass (excluding `node_modules/`, `.git/` and `d
 4.24 MB in 100 files, `.git` 2.02 MB, largest file `data/roads_27_688_…graphml` at 2.0 MB, then
 `public/data/roads.json` at 1.13 MB. No file needs Git LFS.
 
+**Superseded, 18 Oct** — the measurements above are kept as a record, but two later additions and one
+removal changed them. `media/demo-walkthrough.mp4` is now the **largest file in the repo at 35.06 MB**,
+and with the 12 screenshots the working tree is **40.50 MB in 112 files**. The size driver moved from
+the road graph to the video, and a clone is roughly 20× heavier than it was. Still no Git LFS needed —
+the video is well under GitHub's 100 MB hard limit and the only warning threshold is 50 MB — but the
+weight is baked into history the moment it is committed, so it is worth a deliberate `git add` rather
+than a blanket `git add .`. The source document `Isolation-Clock-Screenshots.docx` (1.01 MB) has since
+been **deleted**, not archived: all nine of its images were verified byte-identical by SHA-256 to
+`screenshots/01`–`09` before it went, so no image was lost, but the README is now the only place its
+captions exist.
+
 **Done when:** `data/README.md` explains every committed data file. ✅
 
 ## T17 · Keep this file live
@@ -374,54 +389,81 @@ Sizes measured after the cleanup pass (excluding `node_modules/`, `.git/` and `d
 # Part 4 — Deploy
 
 ## T18 · Deploy to a live URL
-**Est:** 1 h · **Done by:** Syed Abdul Wasay (config) · **Blocking for submission**
+**Est:** 1 h · **Done by:** Syed Abdul Wasay · **Blocking for submission**
 
 - [x] Commit a deploy config (`vercel.json` or `netlify.toml`): build `npm run build`, output `dist/`,
       static site, no serverless functions. **Both** are committed with identical settings, so either
-      host works with no dashboard configuration. (They are in the working tree, not committed yet —
-      the user owns git.)
-- [ ] Deploy and open the live URL on a phone as well as desktop. **Needs an account — user-side.**
-- [ ] Confirm the five `public/data/*.json` files are served and gzip/brotli-compressed. `roads.json`
-      is 1.15 MB raw; both hosts compress by default, but this must be confirmed on the real URL.
-- [ ] Confirm deep links / refresh on a sub-path work (`import.meta.env.BASE_URL` handling). The app is
-      a single page with no client-side router, so any URL serves `index.html`; a sub-path deploy is
-      still worth one manual check because `BASE_URL` is used for every data fetch.
-- [ ] Put the URL at the top of `README.md` (T14).
+      host works with no dashboard configuration.
+- [x] Deployed and opened: <https://isolation-clock.netlify.app/>. Verified from this environment —
+      the page loads, the header reads **400 households · 1043 people · 7 safe places** from the live
+      JSON, all 12 map tiles load, and there are **zero console or page errors**. The live bundle hash
+      is `index-1ywJAOey.js`, the same hash a local `npm run build` produces, so the deployed artefact
+      matches the committed source. ⚠️ **Still unverified:** the phone check, which needs a phone.
+- [x] Confirm the five `public/data/*.json` files are served and compressed. Measured on the live URL:
+      `roads.json` **1.15 MB raw → 137 KB over the wire** (Brotli, ~8.4×), `households.json` 138 KB →
+      8 KB, `isolation.json` 76 KB → 3 KB, plus `shelters`, `hospitals` and `meta` all `200 OK`. The
+      two tiny files (466 B and 896 B) are served uncompressed, which is Netlify's size threshold and
+      irrelevant at that size.
+- [x] Confirm deep links / refresh work. Measured: `/` serves the app and refresh works; an invented
+      path such as `/some/deep/path` returns **404**. That is correct for this app and not a defect —
+      it has no client-side router, so no URL other than `/` is a real entry point. The earlier note
+      here claimed "any URL serves `index.html`", which was wrong: Netlify only does that with an
+      explicit catch-all rewrite, and adding one would be cargo-culting a route that does not exist.
+- [x] Put the URL at the top of `README.md` (T14).
 
-**Done when:** the live URL loads the full app on a fresh device with no console errors.
-⚠️ **Blocked on a hosting account.** The config is ready; the deploy itself is user-side.
+**Done when:** the live URL loads the full app on a fresh device with no console errors. ✅ Verified on
+desktop. ⚠️ One gap: `netlify.toml` declares `Cache-Control: public, max-age=3600` for `/data/*`, but
+the live responses come back with `public, max-age=0, must-revalidate` — the rule is **not** being
+applied. That is harmless (it only costs a revalidation round trip, not a re-download) but it suggests
+the site may have been published by dragging `dist/` rather than built from the repo, in which case
+**later commits will not redeploy automatically**. Worth connecting the repo in the Netlify UI.
 
 ## T19 · Performance sanity check on the live URL
-**Est:** 45 min · **Done by:** —
+**Est:** 45 min · **Done by:** Syed Abdul Wasay
 
-`public/data/roads.json` is ~1.1 MB raw.
+Measured on <https://isolation-clock.netlify.app/> with the cache disabled, network throttled through
+the DevTools protocol (Chrome's "Fast 3G": 1.6 Mbps down, 750 Kbps up, 150 ms RTT):
 
-- [ ] Measure first load, throttled to "Fast 3G" in DevTools. **Blocked on T18.**
-- [ ] Confirm the JSON is compressed at the edge (Vercel/Netlify do this by default — verify).
-- [ ] If it still feels slow, record it in `docs/tradeoffs.md` rather than over-engineering now.
+| Condition | Time until the app is usable |
+|---|---|
+| No throttle | **0.93 s** |
+| Fast 3G | **2.0 s** |
+| Slow 3G (400 Kbps, 400 ms RTT) | **7.1 s** |
 
-What is already known and recorded in `docs/tradeoffs.md`: the per-tick classification of all 4,958
-segments costs ≈0.15 ms in Node, and the map now draws ~4 road layers per render instead of ~4,958.
-The remaining unknown is the **first-load** cost of the 1.15 MB JSON, which is a network number and
-can only be measured on a real URL.
+First load is **285 KB** compressed in every case — of which `roads.json` is 137 KB and the JS bundle
+122 KB — so the payload is roughly a fifth of the 1.15 MB the raw data file suggests.
 
-**Done when:** the numbers are written down, with a decision. ⚠️ **Blocked on a live URL.**
+- [x] Measure first load, throttled to "Fast 3G". **2.0 s**, against 0.93 s unthrottled and 7.1 s on a
+      400 Kbps link. The throttle was verified to be real rather than assumed: the three profiles scale
+      as they should, so the number is trustworthy.
+- [x] Confirm the JSON is compressed at the edge. Confirmed — Brotli, with `roads.json` at 8.4×.
+- [x] If it still feels slow, record it in `docs/tradeoffs.md` rather than over-engineering now.
+      **Not needed:** 285 KB and 2 s on Fast 3G is fine, so nothing is added to `tradeoffs.md`. The one
+      thing worth naming that this measurement does **not** cover is the **OpenStreetMap raster tiles**,
+      which load from `a/b/c.tile.openstreetmap.org` and are third-party: they are outside the 285 KB
+      and outside our control. On a throttled link they arrive after the app is already interactive, so
+      the app is usable while the basemap is still filling in — which is the right order.
+
+**Done when:** the numbers are written down, with a decision. ✅ Written down here; the decision is
+that the size is acceptable and needs no work before submission.
 
 ---
 
 # Part 5 — Demo video
 
-## T20 · Record the ~3 minute demo
-**Est:** 1.5 h · **Done by:** — · **Blocking for submission**
+## T20 · Record the demo
+**Est:** 1.5 h · **Done by:** Rabia Chandio · **Blocking for submission**
 
-- [ ] Script it around the live URL, in this order: the problem → drag the scenario slider and watch
-      the re-sort → open one household's *why* panel → the allocation panel → pin and compare →
-      the new Part 1 panels → the honesty disclaimer.
-- [ ] Say the disclaimer out loud: **scenario simulator, not a forecast**; synthetic households;
-      real OSM roads; unverified SMS is not evidence.
-- [ ] Upload (unlisted) and put the link near the top of `README.md`.
+- [x] Recorded the walkthrough — the scenario sweep, the ranking re-sorting live, a household's *why*
+      panel, the allocation split, pin-and-compare and the SMS check-in simulator.
+- [x] The honesty framing is on screen throughout: *scenario simulator, not a flood forecast*,
+      synthetic households, and simulated SMS marked unverified.
+- [x] Put it in the repo at `media/demo-walkthrough.mp4` (**2 min 21 s**) and linked it from the demo
+      section at the top of `README.md` — the in-repo route instead of an unlisted upload, so the link
+      cannot rot. This replaces the "upload unlisted and paste the link" step.
 
-**Done when:** the link plays for someone who has never seen the project.
+**Done when:** the link plays for someone who has never seen the project. ✅ The file is committed with
+the repo and the README links it. Note the length is **2 min 21 s**, not the ~3 min this task assumed.
 
 ---
 
@@ -430,11 +472,16 @@ can only be measured on a real URL.
 ## T21 · Submit
 **Est:** 30 min · **Done by:** —
 
-- [ ] Public repo with visible history — confirm the pushed tip is the one you want judged.
-- [ ] Live link works on a fresh device.
+- [x] Public repo with visible history — `main` @ `e76b747` is in sync with `origin/main`. ⚠️ The
+      screenshots, `media/` and the README/TASKS/prompts edits from 18 Oct are still **uncommitted**, so
+      commit and push before submitting or the judged tip will not match the README.
+- [x] Live link works on a fresh device. Verified with the cache disabled at
+      <https://isolation-clock.netlify.app/>: loads clean, data present, no console errors. ⚠️ Verified
+      on desktop only — the phone pass still needs a phone.
 - [ ] `prompts/prompts.md` present and complete, every entry with its `Model:` filled in.
 - [ ] `README.md` runnable as written; architecture diagram and trade-offs present.
-- [ ] Demo video link present.
+- [x] Demo video link present — `media/demo-walkthrough.mp4` (2 min 21 s), linked from the top of
+      `README.md`. Committed with the repo rather than uploaded externally.
 - [ ] Submit the form well before **18 Oct 2026, 22:00 PKT**.
 
 **Done when:** the submission is in.
